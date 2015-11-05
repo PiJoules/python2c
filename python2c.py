@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import re
+import sys
 
 from blocks import Block, StringBlock, FunctionBlock
 
@@ -54,14 +55,44 @@ def parse_print(line):
     """
     Simple translation of a static string.
     """
-    return re.sub(r'print\("([^"]*)"\)', r'printf("\1\\n");', line)
+    return re.sub(r"print\(\"([^\"]*)\"\)", r'printf("\1\\n");', line)
 
 
 def translate_line(line):
     """
     Function to run when reading a single line.
     """
+    # commands = {
+    #     re.compile()
+    # }
     return parse_print(line)
+
+
+def error_check(translated_code):
+    """
+    Check to see if there are any erros by checking the return
+    status of gcc after attempting to compile the translated_code.
+    """
+    tmpfilename = "hopefully_there_arent_any_other_files_with_this_name"
+    tmpfile = open(tmpfilename + ".c", "w")
+    tmpfile.write(translated_code)
+    tmpfile.close()
+
+    import subprocess
+    p = subprocess.Popen("gcc {}.c -o {}".format(tmpfilename,
+                         tmpfilename).split())
+    p.communicate()
+
+    import os
+    try:
+        os.remove(tmpfilename)
+    except OSError:
+        print("Could not generate an executable due to an error.",
+              file=sys.stderr)
+    os.remove(tmpfilename + ".c")
+
+    # Success on 0
+    return not p.returncode
 
 
 def read_file(filename, no_whitespace=True):
@@ -90,6 +121,11 @@ def get_args():
     parser.add_argument(
         "-s", "--indent-size", type=int, default=4,
         help="The number of spaces with which to represent each indent."
+    )
+    parser.add_argument(
+        "-c", "--compile-check", default=False, action="store_true",
+        help="Instead of printing to stdout, compile the generated code \
+        and see if there are any errors."
     )
 
     return parser.parse_args()
@@ -123,8 +159,13 @@ def main():
     for i in xrange(len(code)):
         top.last.append(StringBlock(translate_line(code[i])))
 
-    print(top)
+    if args.compile_check:
+        return 0 if error_check(str(top)) else 1
+    else:
+        print(top)
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

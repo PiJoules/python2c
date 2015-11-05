@@ -16,7 +16,7 @@ ayy lmao
 
 ## Changelog
 - 11/04/2015
-  - Can print a static string
+  - Can print a static string.
 
 ## Todo
 - Be able to print a string with parameters
