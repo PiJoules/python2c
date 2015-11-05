@@ -62,10 +62,15 @@ def translate_line(line):
     """
     Function to run when reading a single line.
     """
-    # commands = {
-    #     re.compile()
-    # }
-    return parse_print(line)
+    commands = {
+        re.compile("print\(\"([^\"]*)\"\)"): r'printf("\1\\n");'
+    }
+    # return parse_print(line)
+    for pattern in commands:
+        m = pattern.search(line)
+        if m:
+            return re.sub(pattern, commands[pattern], line)
+    return ""
 
 
 def error_check(translated_code):
