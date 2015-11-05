@@ -11,6 +11,18 @@ $ ./a.out
 ayy lmao
 ```
 
+## Notes
+- Directly transl8 the code. DO NOT OPTIMIZE. Leave that to whatever will be compiling the translated C.
+
 ## Changelog
 - 11/04/2015
   - Can print a static string
+
+## Todo
+- Be able to print a string with parameters
+  - For now:
+    - Only support translation for `format()` with the parameters layed out. 
+    - Only support translation for the types given [here](https://www.le.ac.uk/users/rjm1/cotter/page_30.htm).
+  - Ex:
+    - `print("This is a {}".format(test))` -> `printf("This is a %s\n", test);`
+    - `print("{} {} {}".format(integer, float, unsigned_decimal)) -> printf("%d %f %u\n", int, float, unsgined);`
