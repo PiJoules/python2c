@@ -25,4 +25,4 @@ ayy lmao
     - Only support translation for the types given [here](https://www.le.ac.uk/users/rjm1/cotter/page_30.htm).
   - Ex:
     - `print("This is a {}".format(test))` -> `printf("This is a %s\n", test);`
-    - `print("{} {} {}".format(integer, float, unsigned_decimal)) -> printf("%d %f %u\n", int, float, unsgined);`
+    - `print("{} {} {}".format(integer, float, unsigned_decimal))` -> `printf("%d %f %u\n", int, float, unsgined);`
