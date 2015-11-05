@@ -98,8 +98,10 @@ def get_args():
 def main():
     """
     Stages
-    1. Ignore certain lines of code.
-    2. Actual translation.
+    1. Setup stuff from arguments
+    2. Ignore certain lines of code.
+    3. Add necessary includes and main function.
+    4. Actual translation.
     """
     args = get_args()
     code = read_file(args.file)

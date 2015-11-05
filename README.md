@@ -10,3 +10,7 @@ $ gcc print_test.c
 $ ./a.out
 ayy lmao
 ```
+
+## Changelog
+- 11/04/2015
+  - Can print a static string
