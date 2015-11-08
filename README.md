@@ -1,22 +1,26 @@
-# Python to C Translator
+# Python to C++ Translator
 Because reasons.
 
 This is gonna be a very long long-term project.
 
 ## Usage
 ```sh
-$ python python2c.py samples/print_test.py > print_test.c
-$ gcc print_test.c
+$ python python2cpp.py samples/print_test.py > print_test.cpp
+$ g++ print_test.cpp
 $ ./a.out
 ayy lmao
 ```
 
 ## Notes
 - Directly transl8 the code. DO NOT OPTIMIZE. Leave that to whatever will be compiling the translated C.
+- Track memory leaks using valgrind
+  - `valgrind --dsymutil=yes --track-origins=yes ./a.out`
 
 ## Changelog
 - 11/04/2015
   - Can print a static string.
+- 11/07/2015
+  - Changed to c++ conversion b/c I'm not smart enough to implement objects in c.
 
 ## Todo
 - Be able to print a string with parameters

@@ -53,8 +53,15 @@ class Block(object):
 class FunctionBlock(Block):
     """
     Block for functions.
+    func_type:
+        Data type to be returned by the func.
+        (int, float, etc.)
+    name:
+        Function name
+    args:
+        Dict of args to include in the function.
     """
-    def __init__(self, func_type, name, contents=[]):
+    def __init__(self, func_type, name, args, contents=[]):
         super(FunctionBlock, self).__init__(contents)
         self.func_type = func_type
         self.name = name

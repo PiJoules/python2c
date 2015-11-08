@@ -1,4 +1,4 @@
 *.pyc
 *.out
 *.exe
-*.c
+*.h.gch
