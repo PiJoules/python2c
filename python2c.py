@@ -71,12 +71,12 @@ def error_check(translated_code):
     status of g++ after attempting to compile the translated_code.
     """
     tmpfilename = "hopefully_there_arent_any_other_files_with_this_name"
-    tmpfile = open(tmpfilename + ".cpp", "w")
+    tmpfile = open(tmpfilename + ".c", "w")
     tmpfile.write(translated_code)
     tmpfile.close()
 
     import subprocess
-    p = subprocess.Popen("g++ {}.cpp -o {}".format(tmpfilename,
+    p = subprocess.Popen("g++ {}.c -o {}".format(tmpfilename,
                          tmpfilename).split())
     p.communicate()
 
@@ -87,7 +87,7 @@ def error_check(translated_code):
     except OSError:
         print("Could not generate an executable due to an error.",
               file=sys.stderr)
-    os.remove(tmpfilename + ".cpp")
+    os.remove(tmpfilename + ".c")
 
     # Success on 0
     return not p.returncode
@@ -114,8 +114,8 @@ def get_args():
     """
     from argparse import ArgumentParser
 
-    parser = ArgumentParser(description="Convert python code to C++ code")
-    parser.add_argument("file", help=".py file to translate to C++.")
+    parser = ArgumentParser(description="Convert python code to C code")
+    parser.add_argument("file", help=".py file to translate to C.")
     parser.add_argument(
         "-s", "--indent-size", type=int, default=4,
         help="The number of spaces with which to represent each indent."
