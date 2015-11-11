@@ -66,11 +66,15 @@ class FunctionBlock(Block):
     def __init__(self, func_type, name, args, contents=[]):
         super(FunctionBlock, self).__init__(contents)
         self.func_type = func_type
+        self.args = args
         self.name = name
 
     def __str__(self):
-        lines = ["{type} {name}(){{".format(type=self.func_type,
-                                            name=self.name)]
+        lines = ["{type} {name}({args}){{".format(
+            type=self.func_type, name=self.name,
+            args=", ".join(["{} {}".format(argtype, argname)
+                            for argtype, argname in self.args])
+        )]
 
         indentation = " "*self.indent if self.should_indent else ""
         child_contents = map(lambda x: indentation + str(x),
@@ -79,6 +83,14 @@ class FunctionBlock(Block):
 
         lines += [indentation + "return 0;", "}"]
         return "\n".join(lines)
+
+
+class ForBlock(Block):
+    """
+    Block for for loops
+    """
+    def __init__(self, iterator, iterable, contents=[]):
+        super(FunctionBlock, self).__init__(contents)
 
 
 class StringBlock(Block):

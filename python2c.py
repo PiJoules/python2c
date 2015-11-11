@@ -28,7 +28,7 @@ def main_func():
     Return a standard main function block.
     """
     main_block = FunctionBlock("int", "main", [("int", "argc"),
-                               ("char *", "argv[]")])
+                               ("char", "*argv[]")])
     return main_block
 
 
@@ -40,7 +40,7 @@ def should_ignore_line(line):
         re.compile('#!/usr/bin/env python'),
         re.compile('from __future__ import .+'),
         re.compile('^#[\s\S]*'),
-        re.compile('^\s+')
+        re.compile('^\s+$')
     ]
     return any(p.search(line) for p in patterns_to_ingore)
 
@@ -59,13 +59,22 @@ def translate_line(line):
     Function to run when reading a single line.
     """
     commands = {
-        re.compile("print\(\"([^\"]*)\"\)"): r'printf("\1\\n");'
+        re.compile("print\(\"([^\"]*)\"\)"): r'printf("\1\\n");',
+        # re.compile("for\s+(.+)\s+in\s+([^\:]+)\:"): r''
     }
     for pattern in commands:
         m = pattern.search(line)
         if m:
             return re.sub(pattern, commands[pattern], line)
     return ""
+
+
+def translate_block(code):
+    """
+    If you find a line that indicates a block, create the block and
+    fill it with the following lines.
+    """
+    pass
 
 
 def error_check(translated_code):
@@ -158,7 +167,8 @@ def main():
 
     # Add remaining relevant code
     for i in xrange(len(code)):
-        top.last.append(StringBlock(translate_line(code[i])))
+        line = code[i]
+        top.last.append(StringBlock(translate_line(line)))
 
     if args.compile_check:
         return 0 if error_check(str(top)) else 1

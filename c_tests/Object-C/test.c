@@ -1,5 +1,20 @@
 #include "utils.h"
 
+/**
+ * print_loop.py example
+ */
+void print_loop(){
+	Object *range_list1 = range(0,5+10,1);
+	int i;
+	for (i = 0; i < range_list1->length; i++){
+		Object *num_i = list_get(range_list1, i);
+		char *num_i_str = str(num_i);
+		printf("%s\n", num_i_str);
+		free(num_i_str);
+	}
+	destroy(range_list1);
+}
+
 int main(int argc, char *argv[]){
 	// Object
 	Object *obj = new_Object();
@@ -83,12 +98,33 @@ int main(int argc, char *argv[]){
 
 	destroy_List(list);
 
+	printf("\n");
+
 	// Range
 	Object *range_list = range(0,10,1);
 	char *range_str = str(range_list);
 	printf("range(0,10,1): %s\n", range_str);
 	free(range_str);
 	destroy_List(range_list);
+
+	printf("\n");
+
+	// Iterating through list
+	printf("Iterating through range(65,75,1)\n");
+	range_list = range(65,75,1);
+	int i;
+	for (i = 0; i < range_list->length; i++){
+		Object *num = list_get(range_list, i);
+		printf("%d:%c ", num->value, num->value);
+	}
+	printf("\n");
+	destroy_List(range_list);
+
+	printf("\n");
+
+	// samples/print_loop.py
+	printf("print_loop.py example\n");
+	print_loop();
 
 	return 0;
 }

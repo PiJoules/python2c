@@ -23,6 +23,7 @@ struct _Object {
 
 Object *new_Object();
 void destroy_Object(Object *obj);
+void destroy(Object *obj);
 
 char *str(Object *obj);
 char *id(Object *obj);

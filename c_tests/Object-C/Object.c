@@ -32,6 +32,21 @@ void destroy_Object(Object *obj){
     free(obj);
 }
 
+void destroy(Object *obj){
+    if (strcmp(obj->name, "object") == 0){
+        destroy_Object(obj);
+    }
+    else if (strcmp(obj->name, "integer") == 0){
+        destroy_Integer(obj);
+    }
+    else if (strcmp(obj->name, "list") == 0){
+        destroy_List(obj);
+    }
+    else {
+        free(obj);
+    }
+}
+
 /**
  * Return the string representation of an object.
  * @param  obj Object struct
