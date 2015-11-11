@@ -20,7 +20,6 @@ Object *new_Object(){
     //     *(obj->name + len) = 0;
     // }
     obj->name = "object";
-    obj->value = 0;
 
     // Initializing interface for access to functions
     // obj->__str__ = __str__;

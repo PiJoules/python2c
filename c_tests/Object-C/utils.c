@@ -28,6 +28,40 @@ char *str(Object *obj){
     	sprintf(str_rep, "%d", obj->value);
     	return str_rep;
     }
+    else if (strcmp(obj->name, "list") == 0){
+    	// Return the contents of the list separated by ,
+    	char *str_rep = (char*)malloc(sizeof(char)*3);
+    	unsigned int len = 3; // Initially just "[]" (then null terminator)
+    	unsigned int start = 1; // Start after the [
+    	*str_rep = '[';
+
+    	int i;
+    	Object *elem = NULL;
+    	for (i = 0; i < obj->length; i++){
+    		// I know this is an inefficient way of getting the elems
+    		// but I am just trying to get this to work for now.
+    		elem = list_get(obj, i);
+    		char *elem_str = str(elem);
+
+    		// Resize the list str_rep
+    		int elem_len = strlen(elem_str);
+    		len += elem_len + 1; // The string len + ,
+    		str_rep = (char*)realloc(str_rep, sizeof(char)*len);
+    		strncpy(str_rep + start, elem_str, elem_len);
+    		*(str_rep + start + elem_len) = ',';
+    		start += elem_len + 1;
+
+    		free(elem_str);
+    	}
+
+    	if (obj->length > 0){
+    		len--;
+    	}
+
+    	*(str_rep+len-2) = ']';
+		*(str_rep+len-1) = 0;
+    	return str_rep;
+    }
 
     // Return the name by default
     return dynamic_str(obj->name);

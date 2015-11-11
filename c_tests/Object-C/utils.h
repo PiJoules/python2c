@@ -8,6 +8,7 @@
 
 #include "Object.h"
 #include "Integer.h"
+#include "List.h"
 
 char *dynamic_str(char *);
 char *str(Object *obj);
