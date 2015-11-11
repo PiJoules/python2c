@@ -16,19 +16,30 @@ char *dynamic_str(char *static_str){
 	return dynamic;
 }
 
+/**
+ * Return the string representation of an object.
+ * @param  obj Object struct
+ * @return     char*
+ */
 char *str(Object *obj){
-    if (obj->name != NULL){
-        char *name = dynamic_str(obj->name);
-
-        if (strcmp(name, "object") == 0){
-            return name;
-        }
-
-        return name;
+    if (strcmp(obj->name, "integer") == 0){
+    	// Return the vlaue for an integer
+    	char *str_rep = (char*)malloc(1024);
+    	sprintf(str_rep, "%d", obj->value);
+    	return str_rep;
     }
 
-    // Return the pointer
-    char *test = (char*)malloc(1024);
-    sprintf(test, "%p", obj);
-    return test; 
+    // Return the name by default
+    return dynamic_str(obj->name);
+}
+
+/**
+ * Return an id unique to this particular object.
+ * @param  obj Object struct
+ * @return     char* (address in hex)
+ */
+char *id(Object *obj){
+    char *id_ = (char*)malloc(1024);
+    sprintf(id_, "%p", obj);
+    return id_; 
 }

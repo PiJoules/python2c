@@ -1,43 +1,27 @@
 #include "utils.h"
 
 int main(int argc, char *argv[]){
-	// Object test
-	// Object with no name
-	Object *obj = new_Object(NULL);
-	destroy_Object(obj);
-
-	// Object with static name
-	Object *obj2 = new_Object("ayy lmao");
+	// Object
+	Object *obj2 = new_Object();
+	char *obj_str = str(obj2);
+	char *obj_id = id(obj2);
+	printf("str: %s\n", obj_str);
+	printf("id: %s\n", obj_id);
+	free(obj_str);
+	free(obj_id);
 	destroy_Object(obj2);
 
-	// Object with dynamic name
-	char *name = dynamic_str("ayy lmao");
-	Object *obj3 = new_Object(name);
-	destroy_Object(obj3);
-	free(name);
+	printf("\n");
 
-	// Object with no name and printing
-	Object *obj4 = new_Object(NULL);
-	char *obj_str = str(obj4);
-	printf("%s\n", obj_str);
-	free(obj_str);
-	destroy_Object(obj4);
-
-	// Object with static name and printing
-	Object *obj5 = new_Object("ayy lmao");
-	char *obj_str2 = str(obj5);
-	printf("%s\n", obj_str2);
-	free(obj_str2);
-	destroy_Object(obj5);
-
-	// Object with dynamic name and printing
-	char *name2 = dynamic_str("ayy lmao");
-	Object *obj6 = new_Object(name2);
-	char *obj_str3 = str(obj6);
-	printf("%s\n", obj_str3);
-	free(obj_str3);
-	destroy_Object(obj6);
-	free(name2);
+	// Integer
+	Object *integer = new_Integer(5);
+	char *integer_str = str(integer);
+	char *integer_id = id(integer);
+	printf("str: %s\n", integer_str);
+	printf("id: %s\n", integer_id);
+	free(integer_id);
+	free(integer_str);
+	destroy_Integer(integer);
 
 	return 0;
 }

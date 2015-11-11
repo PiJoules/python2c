@@ -1,7 +1,7 @@
 #ifndef __INTEGER
 #define __INTEGER
 
-Object *new_List(char *name);
-void destroy_List(Object *obj);
+Object *new_Integer(int i);
+void destroy_Integer(Object *integer);
 
 #endif

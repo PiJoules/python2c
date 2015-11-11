@@ -1,6 +1,6 @@
 #include "utils.h"
 
-Object *new_Object(char *name){
+Object *new_Object(){
     Object *obj;
 
     // Allocating memory
@@ -9,16 +9,18 @@ Object *new_Object(char *name){
         return NULL;
     }
 
-    // Default parameters
-    if (name == NULL){
-        obj->name = NULL;
-    }
-    else {
-        int len = strlen(name);
-        obj->name = (char*)malloc(sizeof(char)*(len+1));
-        strncpy(obj->name, name, len);
-        *(obj->name + len) = 0;
-    }
+    // Set the default parameters
+    // if (name == NULL){
+    //     obj->name = NULL;
+    // }
+    // else {
+    //     int len = strlen(name);
+    //     obj->name = (char*)malloc(sizeof(char)*(len+1));
+    //     strncpy(obj->name, name, len);
+    //     *(obj->name + len) = 0;
+    // }
+    obj->name = "object";
+    obj->value = 0;
 
     // Initializing interface for access to functions
     // obj->__str__ = __str__;
@@ -27,6 +29,6 @@ Object *new_Object(char *name){
 }
 
 void destroy_Object(Object *obj){
-    free(obj->name);
+    assert(strcmp(obj->name, "object") == 0);
     free(obj);
 }
