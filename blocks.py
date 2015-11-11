@@ -59,7 +59,9 @@ class FunctionBlock(Block):
     name:
         Function name
     args:
-        Dict of args to include in the function.
+        List of tuples containing args (argtype, argname).
+    contents:
+        List of blocks to fill this block with.
     """
     def __init__(self, func_type, name, args, contents=[]):
         super(FunctionBlock, self).__init__(contents)

@@ -15,7 +15,7 @@ def includes(code):
     """
     includes = []
     if any("print" in line for line in code):
-        includes.append(StringBlock("#include <iostream>"))
+        includes.append(StringBlock("#include <stdio.h>"))
 
     # Add a blank line for no reason
     includes.append(StringBlock())
@@ -27,7 +27,8 @@ def main_func():
     """
     Return a standard main function block.
     """
-    main_block = FunctionBlock("int", "main")
+    main_block = FunctionBlock("int", "main", [("int", "argc"),
+                               ("char *", "argv[]")])
     return main_block
 
 
@@ -37,7 +38,9 @@ def should_ignore_line(line):
     """
     patterns_to_ingore = [
         re.compile('#!/usr/bin/env python'),
-        re.compile('from __future__ import .+')
+        re.compile('from __future__ import .+'),
+        re.compile('^#[\s\S]*'),
+        re.compile('^\s+')
     ]
     return any(p.search(line) for p in patterns_to_ingore)
 
@@ -56,7 +59,7 @@ def translate_line(line):
     Function to run when reading a single line.
     """
     commands = {
-        re.compile("print\(\"([^\"]*)\"\)"): r'std::cout << "\1" << std::endl;'
+        re.compile("print\(\"([^\"]*)\"\)"): r'printf("\1\\n");'
     }
     for pattern in commands:
         m = pattern.search(line)
@@ -76,7 +79,7 @@ def error_check(translated_code):
     tmpfile.close()
 
     import subprocess
-    p = subprocess.Popen("g++ {}.c -o {}".format(tmpfilename,
+    p = subprocess.Popen("gcc {}.c -o {}".format(tmpfilename,
                          tmpfilename).split())
     p.communicate()
 
