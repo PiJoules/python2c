@@ -1,21 +1,10 @@
 #include "utils.h"
 
 Object *new_Integer(int i){
-    // Object *obj;
-
-    // // Allocating memory
-    // obj = (Object *)malloc(sizeof(Object));
-    // if (obj == NULL){
-    //     return NULL;
-    // }
-
-    // Default parameters
-    // int len = strlen(name);
-    // obj->name = (char*)malloc(sizeof(char)*(len+1));
-    // strncpy(obj->name, name, len);
-    // *(obj->name + len) = 0;
-
+    // Intiialize object
     Object *integer = new_Object();
+
+    // Set default values
     integer->name = "integer";
     integer->value = i;
 
@@ -25,4 +14,10 @@ Object *new_Integer(int i){
 void destroy_Integer(Object *integer){
     assert(strcmp(integer->name, "integer") == 0);
     free(integer);
+}
+
+Object *add_integers(Object *int1, Object *int2){
+    int val1 = int1->value;
+    int val2 = int2->value;
+    return new_Integer(val1 + val2);
 }

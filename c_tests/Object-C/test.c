@@ -23,5 +23,20 @@ int main(int argc, char *argv[]){
 	free(integer_str);
 	destroy_Integer(integer);
 
+	printf("\n");
+
+	// Integer addition
+	Object *int1 = new_Integer(9);
+	Object *int2 = new_Integer(8);
+	Object *sum = add_integers(int1, int2);
+
+	char *sum_str = str(sum);
+	printf("sum: %s\n", sum_str);
+	free(sum_str);
+
+	destroy_Integer(sum);
+	destroy_Integer(int2);
+	destroy_Integer(int1);
+
 	return 0;
 }
