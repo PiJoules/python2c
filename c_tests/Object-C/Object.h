@@ -24,4 +24,7 @@ struct _Object {
 Object *new_Object();
 void destroy_Object(Object *obj);
 
+char *str(Object *obj);
+char *id(Object *obj);
+
 #endif

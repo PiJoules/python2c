@@ -11,7 +11,7 @@
 #include "List.h"
 
 char *dynamic_str(char *);
-char *str(Object *obj);
-char *id(Object *obj);
+
+Object *range(int start, int stop, int step);
 
 #endif

@@ -83,5 +83,12 @@ int main(int argc, char *argv[]){
 
 	destroy_List(list);
 
+	// Range
+	Object *range_list = range(0,10,1);
+	char *range_str = str(range_list);
+	printf("range(0,10,1): %s\n", range_str);
+	free(range_str);
+	destroy_List(range_list);
+
 	return 0;
 }

@@ -31,3 +31,34 @@ void destroy_Object(Object *obj){
     assert(strcmp(obj->name, "object") == 0);
     free(obj);
 }
+
+/**
+ * Return the string representation of an object.
+ * @param  obj Object struct
+ * @return     char*
+ */
+char *str(Object *obj){
+    if (strcmp(obj->name, "integer") == 0){
+        // Return the vlaue for an integer
+        char *str_rep = (char*)malloc(1024);
+        sprintf(str_rep, "%d", obj->value);
+        return str_rep;
+    }
+    else if (strcmp(obj->name, "list") == 0){
+        return list_str(obj);
+    }
+
+    // Return the name by default
+    return dynamic_str(obj->name);
+}
+
+/**
+ * Return an id unique to this particular object.
+ * @param  obj Object struct
+ * @return     char* (address in hex)
+ */
+char *id(Object *obj){
+    char *id_ = (char*)malloc(1024);
+    sprintf(id_, "%p", obj);
+    return id_; 
+}
