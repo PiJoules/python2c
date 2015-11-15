@@ -89,8 +89,24 @@ class ForBlock(Block):
     """
     Block for for loops
     """
-    def __init__(self, iterator, iterable, contents=[]):
-        super(FunctionBlock, self).__init__(contents)
+    def __init__(self, iterator, max_iteration, contents=[]):
+        super(ForBlock, self).__init__(contents)
+        self.iterator = iterator
+        self.max_iteration = max_iteration
+
+    def __str__(self):
+        lines = [
+            "for ({iterator} = 0; i < {max_iteration}; {iterator}++){{"
+            .format(iterator=self.iterator, max_iteration=self.max_iteration)
+        ]
+
+        indentation = " "*self.indent if self.should_indent else ""
+        child_contents = map(lambda x: indentation + str(x),
+                             self.contents)
+        lines += child_contents
+
+        lines += ["}"]
+        return "\n".join(lines)
 
 
 class StringBlock(Block):

@@ -5,7 +5,9 @@ from __future__ import print_function
 import re
 import sys
 
-from blocks import Block, StringBlock, FunctionBlock
+from blocks import *
+from arg_positions import prettyparseprint
+import ast
 
 
 def includes(code):
@@ -16,6 +18,7 @@ def includes(code):
     includes = []
     if any("print" in line for line in code):
         includes.append(StringBlock("#include <stdio.h>"))
+        includes.append(StringBlock('#include "c_tests/Object-C/utils.h"'))
 
     # Add a blank line for no reason
     includes.append(StringBlock())
@@ -67,6 +70,22 @@ def translate_line(line):
         if m:
             return re.sub(pattern, commands[pattern], line)
     return ""
+
+
+def evaluate(expression):
+    """
+    When given a function with arguments, keep recursively tracking
+    what needs to get evaluated by another function and stop on reaching
+    a literal or variable.
+    Ex.
+        range(5+10) -> evaluate("5+10") -> stop
+        range(len(range(5+10))) -> evaluate("len(range(5+10))")
+        -> evaluate("range(5+10)") -> evaluate("5+10") -> stop
+
+    expression:
+        Maybe the function name
+    """
+    pass
 
 
 def translate_block(code):
@@ -157,23 +176,98 @@ def main():
     top = Block(should_indent=False)
 
     # Run filtering process
-    code = filter(should_keep_line, code)
+    # code = filter(should_keep_line, code)
 
     # Include includes
     top.append_blocks(includes(code))
 
-    # Add main function
+    # # Add main function
     top.append(main_func())
 
-    # Add remaining relevant code
-    for i in xrange(len(code)):
-        line = code[i]
-        top.last.append(StringBlock(translate_line(line)))
+    # # Add remaining relevant code
+    # for i in xrange(len(code)):
+    #     line = code[i]
+    #     top.last.append(StringBlock(translate_line(line)))
 
-    if args.compile_check:
-        return 0 if error_check(str(top)) else 1
-    else:
-        print(top)
+    # if args.compile_check:
+    #     return 0 if error_check(str(top)) else 1
+    # else:
+    #     print(top)
+
+    def filter_body_nodes(body):
+        ignored_nodes = [ast.ImportFrom]
+        nodes = []
+        for node in body:
+            if any(map(lambda x: isinstance(node, x), ignored_nodes)):
+                continue
+            elif isinstance(node, ast.Expr) and isinstance(node.value, ast.BinOp):
+                continue
+            elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
+                if isinstance(node.value.func.ctx, ast.Load):
+                    if node.value.func.id != "print":
+                        continue
+
+            nodes.append(node)
+
+        return nodes
+
+    def get_op(op, arg1, arg2):
+        if isinstance(op, ast.Add):
+            return "{} + {}".format(arg1, arg2)
+        elif isinstance(op, ast.Sub):
+            return "{} - {}".format(arg1, arg2)
+        elif isinstance(op, ast.Mult):
+            return "{} * {}".format(arg1, arg2)
+        elif isinstance(op, ast.Div) or isinstance(op, ast.FloorDiv):
+            return "{} / {}".format(arg1, arg2)
+        elif isinstance(op, ast.Mod):
+            return "{} % {}".format(arg1, arg2)
+        elif isinstance(op, ast.pow):
+            return "pow((double){}, (double){})".format(arg1, arg2)
+        elif isinstance(op, ast.LShift):
+            return "{} << {}".format(arg1, arg2)
+        elif isinstance(op, ast.RShift):
+            return "{} >> {}".format(arg1, arg2)
+        elif isinstance(op, ast.BitOr):
+            return "{} | {}".format(arg1, arg2)
+        elif isinstance(op, ast.BitXor):
+            return "{} ^ {}".format(arg1, arg2)
+        elif isinstance(op, ast.BitAnd):
+            return "{} & {}".format(arg1, arg2)
+        raise Exception("Could not identify operator " + str(op))
+
+    with open(args.file, "r") as f:
+        nodes = ast.parse(f.read()).body
+
+    nodes = filter_body_nodes(nodes)
+
+    for node in nodes:
+        prettyparseprint(node)
+        if isinstance(node, ast.For):
+            iterator = node.target.id
+            top.last.append(StringBlock("int {};".format(iterator)))
+            if node.iter.func.id == "range":
+                if len(node.iter.args) == 1:
+                    argument = node.iter.args[0]
+                    if isinstance(argument, ast.BinOp):
+                        if isinstance(argument.left, ast.Num) and isinstance(argument.right, ast.Num):
+                            op = get_op(argument.op, argument.left.n, argument.right.n)
+                            top.last.append(StringBlock("Object *temp_range_list1 = range(0,{},1);".format(op)))
+                            top.last.append(ForBlock(iterator, "temp_range_list1->length"))
+                for_body = filter_body_nodes(node.body)
+                for f_node in for_body:
+                    if isinstance(f_node, ast.Expr):
+                        if isinstance(f_node.value, ast.Call):
+                            if f_node.value.func.id == "print":
+                                arguments = f_node.value.args
+                                if len(arguments) == 1:
+                                    top.last.last.append(StringBlock("Object *num_{iterator} = list_get(temp_range_list1, {iterator});".format(iterator=iterator)))
+                                    top.last.last.append(StringBlock("char *num_str_{iterator} = str(num_{iterator});".format(iterator=iterator)))
+                                    top.last.last.append(StringBlock('printf("%s\\n", num_str_{iterator});'.format(iterator=iterator)))
+                                    top.last.last.append(StringBlock("free(num_str_{iterator});".format(iterator=iterator)))
+                top.last.append(StringBlock("destroy(temp_range_list1);"))
+
+    print(top)
 
     return 0
 
