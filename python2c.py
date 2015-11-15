@@ -4,10 +4,11 @@ from __future__ import print_function
 
 import re
 import sys
+import ast
+import os
+import subprocess
 
 from blocks import *
-from arg_positions import prettyparseprint
-import ast
 
 
 def includes(code):
@@ -18,7 +19,7 @@ def includes(code):
     includes = []
     if any("print" in line for line in code):
         includes.append(StringBlock("#include <stdio.h>"))
-        includes.append(StringBlock('#include "c_tests/Object-C/utils.h"'))
+        includes.append(StringBlock('#include "c_utils/utils.h"'))
 
     # Add a blank line for no reason
     includes.append(StringBlock())
@@ -63,7 +64,6 @@ def translate_line(line):
     """
     commands = {
         re.compile("print\(\"([^\"]*)\"\)"): r'printf("\1\\n");',
-        # re.compile("for\s+(.+)\s+in\s+([^\:]+)\:"): r''
     }
     for pattern in commands:
         m = pattern.search(line)
@@ -96,31 +96,91 @@ def translate_block(code):
     pass
 
 
-def error_check(translated_code):
+def filter_body_nodes(body):
+    ignored_nodes = [ast.ImportFrom]
+    nodes = []
+    for node in body:
+        if any(map(lambda x: isinstance(node, x), ignored_nodes)):
+            continue
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.BinOp):
+            continue
+        elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
+            if isinstance(node.value.func.ctx, ast.Load):
+                if node.value.func.id != "print":
+                    continue
+        nodes.append(node)
+    return nodes
+
+
+def get_op(op, arg1, arg2):
+    if isinstance(op, ast.Add):
+        return "{} + {}".format(arg1, arg2)
+    elif isinstance(op, ast.Sub):
+        return "{} - {}".format(arg1, arg2)
+    elif isinstance(op, ast.Mult):
+        return "{} * {}".format(arg1, arg2)
+    elif isinstance(op, ast.Div) or isinstance(op, ast.FloorDiv):
+        return "{} / {}".format(arg1, arg2)
+    elif isinstance(op, ast.Mod):
+        return "{} % {}".format(arg1, arg2)
+    elif isinstance(op, ast.pow):
+        return "pow((double){}, (double){})".format(arg1, arg2)
+    elif isinstance(op, ast.LShift):
+        return "{} << {}".format(arg1, arg2)
+    elif isinstance(op, ast.RShift):
+        return "{} >> {}".format(arg1, arg2)
+    elif isinstance(op, ast.BitOr):
+        return "{} | {}".format(arg1, arg2)
+    elif isinstance(op, ast.BitXor):
+        return "{} ^ {}".format(arg1, arg2)
+    elif isinstance(op, ast.BitAnd):
+        return "{} & {}".format(arg1, arg2)
+    raise Exception("Could not identify operator " + str(op))
+
+
+def error_check_c(translated_code, execute=False):
     """
-    Check to see if there are any erros by checking the return
-    status of g++ after attempting to compile the translated_code.
+    Check to see if there are any errors by checking the return
+    status of gcc after attempting to compile the translated_code.
     """
     tmpfilename = "hopefully_there_arent_any_other_files_with_this_name"
     tmpfile = open(tmpfilename + ".c", "w")
     tmpfile.write(translated_code)
     tmpfile.close()
 
-    import subprocess
-    p = subprocess.Popen("gcc {}.c -o {}".format(tmpfilename,
-                         tmpfilename).split())
+    p = subprocess.Popen("gcc {}.c c_utils/*.c -o {}".format(tmpfilename,
+                         tmpfilename), shell=True)
     p.communicate()
 
-    import os
-    try:
+    if os.path.exists(tmpfilename):
+        if execute:
+            print(subprocess.check_output(["./" + tmpfilename]), end="")
+        else:
+            print("Successful compilation!")
         os.remove(tmpfilename)
-        print("Successful compilation!")
-    except OSError:
+    else:
         print("Could not generate an executable due to an error.",
               file=sys.stderr)
     os.remove(tmpfilename + ".c")
 
-    # Success on 0
+    # Success on 0 (return True)
+    return not p.returncode
+
+
+def error_check_python(filename):
+    """
+    Check to see if there are any errors by checking the return
+    status of python after attempting to interpret the code.
+    """
+    with open(os.devnull, "w") as devnull:
+        p = subprocess.Popen("python {}".format(filename).split(),
+                             stdout=devnull)
+        p.communicate()
+        if p.returncode:
+            print("Coulf not interpret python code due to an error.",
+                  file=sys.stderr)
+
+    # Success on 0 (return True)
     return not p.returncode
 
 
@@ -156,6 +216,12 @@ def get_args():
         help="Instead of printing to stdout, compile the generated code \
         and see if there are any errors."
     )
+    parser.add_argument(
+        "-e", "--execute", default=False, action="store_true",
+        help="Instead of translating the code and spitting to stdout, \
+        immediately compile and execute the translated code. This does \
+        not generate any files or print to stdout."
+    )
 
     return parser.parse_args()
 
@@ -171,70 +237,22 @@ def main():
     args = get_args()
     code = read_file(args.file)
 
+    if ((args.compile_check or args.execute) and
+            not error_check_python(args.file)):
+        return 1
+
     # Setup
     Block.indent = args.indent_size
     top = Block(should_indent=False)
 
     # Run filtering process
-    # code = filter(should_keep_line, code)
+    code = filter(should_keep_line, code)
 
     # Include includes
     top.append_blocks(includes(code))
 
-    # # Add main function
+    # Add main function
     top.append(main_func())
-
-    # # Add remaining relevant code
-    # for i in xrange(len(code)):
-    #     line = code[i]
-    #     top.last.append(StringBlock(translate_line(line)))
-
-    # if args.compile_check:
-    #     return 0 if error_check(str(top)) else 1
-    # else:
-    #     print(top)
-
-    def filter_body_nodes(body):
-        ignored_nodes = [ast.ImportFrom]
-        nodes = []
-        for node in body:
-            if any(map(lambda x: isinstance(node, x), ignored_nodes)):
-                continue
-            elif isinstance(node, ast.Expr) and isinstance(node.value, ast.BinOp):
-                continue
-            elif isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
-                if isinstance(node.value.func.ctx, ast.Load):
-                    if node.value.func.id != "print":
-                        continue
-
-            nodes.append(node)
-
-        return nodes
-
-    def get_op(op, arg1, arg2):
-        if isinstance(op, ast.Add):
-            return "{} + {}".format(arg1, arg2)
-        elif isinstance(op, ast.Sub):
-            return "{} - {}".format(arg1, arg2)
-        elif isinstance(op, ast.Mult):
-            return "{} * {}".format(arg1, arg2)
-        elif isinstance(op, ast.Div) or isinstance(op, ast.FloorDiv):
-            return "{} / {}".format(arg1, arg2)
-        elif isinstance(op, ast.Mod):
-            return "{} % {}".format(arg1, arg2)
-        elif isinstance(op, ast.pow):
-            return "pow((double){}, (double){})".format(arg1, arg2)
-        elif isinstance(op, ast.LShift):
-            return "{} << {}".format(arg1, arg2)
-        elif isinstance(op, ast.RShift):
-            return "{} >> {}".format(arg1, arg2)
-        elif isinstance(op, ast.BitOr):
-            return "{} | {}".format(arg1, arg2)
-        elif isinstance(op, ast.BitXor):
-            return "{} ^ {}".format(arg1, arg2)
-        elif isinstance(op, ast.BitAnd):
-            return "{} & {}".format(arg1, arg2)
-        raise Exception("Could not identify operator " + str(op))
 
     with open(args.file, "r") as f:
         nodes = ast.parse(f.read()).body
@@ -242,7 +260,6 @@ def main():
     nodes = filter_body_nodes(nodes)
 
     for node in nodes:
-        prettyparseprint(node)
         if isinstance(node, ast.For):
             iterator = node.target.id
             top.last.append(StringBlock("int {};".format(iterator)))
@@ -267,7 +284,12 @@ def main():
                                     top.last.last.append(StringBlock("free(num_str_{iterator});".format(iterator=iterator)))
                 top.last.append(StringBlock("destroy(temp_range_list1);"))
 
-    print(top)
+    if args.compile_check:
+        return 0 if error_check_c(str(top)) else 2
+    elif args.execute:
+        return 0 if error_check_c(str(top), True) else 2
+    else:
+        print(top)
 
     return 0
 
