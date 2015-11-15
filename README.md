@@ -19,6 +19,8 @@ ayy lmao
 ## Changelog
 - 11/04/2015
   - Can print a static string.
+- 11/15/2015
+  - Decided to use `ast` module to parse python code.
 
 ## Todo
 - Be able to print a string with parameters
