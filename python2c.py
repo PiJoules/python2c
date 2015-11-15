@@ -11,7 +11,7 @@ import subprocess
 from blocks import *
 
 
-def includes(code):
+def includes_from_code(code):
     """
     Return a list of #includes that are necessary to run the
     C code.
@@ -31,8 +31,10 @@ def main_func():
     """
     Return a standard main function block.
     """
-    main_block = FunctionBlock("int", "main", [("int", "argc"),
-                               ("char", "*argv[]")])
+    main_block = FunctionBlock(
+        "int", "main", [("int", "argc"), ("char", "*argv[]")],
+        sticky_end=[StringBlock("return 0;")]
+    )
     return main_block
 
 
@@ -56,44 +58,6 @@ def should_keep_line(line):
     coudln't do 'code = filter(not should_ignore_line, code)'
     """
     return not should_ignore_line(line)
-
-
-def translate_line(line):
-    """
-    Function to run when reading a single line.
-    """
-    commands = {
-        re.compile("print\(\"([^\"]*)\"\)"): r'printf("\1\\n");',
-    }
-    for pattern in commands:
-        m = pattern.search(line)
-        if m:
-            return re.sub(pattern, commands[pattern], line)
-    return ""
-
-
-def evaluate(expression):
-    """
-    When given a function with arguments, keep recursively tracking
-    what needs to get evaluated by another function and stop on reaching
-    a literal or variable.
-    Ex.
-        range(5+10) -> evaluate("5+10") -> stop
-        range(len(range(5+10))) -> evaluate("len(range(5+10))")
-        -> evaluate("range(5+10)") -> evaluate("5+10") -> stop
-
-    expression:
-        Maybe the function name
-    """
-    pass
-
-
-def translate_block(code):
-    """
-    If you find a line that indicates a block, create the block and
-    fill it with the following lines.
-    """
-    pass
 
 
 def filter_body_nodes(body):
@@ -249,7 +213,7 @@ def main():
     code = filter(should_keep_line, code)
 
     # Include includes
-    top.append_blocks(includes(code))
+    top.append_blocks(includes_from_code(code))
 
     # Add main function
     top.append(main_func())

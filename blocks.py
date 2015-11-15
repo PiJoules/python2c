@@ -12,7 +12,7 @@ class Block(object):
 
     indent = 4
 
-    def __init__(self, contents=[], should_indent=True):
+    def __init__(self, contents=[], should_indent=True, sticky_end=[]):
         """
         contents:
             List of child blocks
@@ -21,10 +21,14 @@ class Block(object):
             be indented. This should ideally be only False for
             the highest level block (the one with no parent)
             blocks.
+        sticky_end:
+            Content to always appear at the end of the contents
+            of the block.
         """
         assert all(issubclass(child.__class__, Block) for child in contents)
         self.contents = contents
         self.should_indent = should_indent
+        self.sticky_end = sticky_end
 
     @property
     def last(self):
@@ -51,6 +55,7 @@ class Block(object):
         """
         indentation = " "*self.indent if self.should_indent else ""
         child_contents = []
+        self.contents += self.sticky_end
         for content in self.contents:
             content = content.block_strings()
             if isinstance(content, list):
@@ -77,8 +82,9 @@ class FunctionBlock(Block):
     contents:
         List of blocks to fill this block with.
     """
-    def __init__(self, func_type, name, args, contents=[]):
-        super(FunctionBlock, self).__init__(contents)
+    def __init__(self, func_type, name, args, contents=[], sticky_end=[]):
+        super(FunctionBlock, self).__init__(
+            contents=contents, sticky_end=sticky_end)
         self.func_type = func_type
         self.args = args
         self.name = name
@@ -94,6 +100,7 @@ class FunctionBlock(Block):
             args=", ".join(["{} {}".format(argtype, argname)
                             for argtype, argname in self.args])
         )]
+        self.contents += self.sticky_end
         for content in self.contents:
             content = content.block_strings()
             if isinstance(content, list):
@@ -101,7 +108,7 @@ class FunctionBlock(Block):
                     child_contents.append(indentation + str(nested_content))
             else:
                 child_contents.append(indentation + str(content))
-        child_contents += [indentation + "return 0;", "}"]
+        child_contents += ["}"]
         return child_contents
 
 
@@ -109,8 +116,9 @@ class ForBlock(Block):
     """
     Block for for loops
     """
-    def __init__(self, iterator, max_iteration, contents=[]):
-        super(ForBlock, self).__init__(contents)
+    def __init__(self, iterator, max_iteration, contents=[], sticky_end=[]):
+        super(ForBlock, self).__init__(
+            contents=contents, sticky_end=sticky_end)
         self.iterator = iterator
         self.max_iteration = max_iteration
 
@@ -120,6 +128,7 @@ class ForBlock(Block):
             "for ({iterator} = 0; i < {max_iteration}; {iterator}++){{"
             .format(iterator=self.iterator, max_iteration=self.max_iteration)
         ]
+        self.contents += self.sticky_end
         for content in self.contents:
             content = content.block_strings()
             if isinstance(content, list):
