@@ -12,7 +12,8 @@ class Block(object):
 
     indent = 4
 
-    def __init__(self, contents=[], should_indent=True, sticky_end=[]):
+    def __init__(self, contents=[], should_indent=True, sticky_front=[],
+                 sticky_end=[]):
         """
         contents:
             List of child blocks
@@ -29,6 +30,7 @@ class Block(object):
         self.contents = contents
         self.should_indent = should_indent
         self.sticky_end = sticky_end
+        self.sticky_front = sticky_front
 
     @property
     def last(self):
@@ -55,7 +57,10 @@ class Block(object):
         """
         indentation = " "*self.indent if self.should_indent else ""
         child_contents = []
-        self.contents += self.sticky_end
+
+        # Add the sticky front and end
+        self.contents = self.sticky_front + self.contents + self.sticky_end
+
         for content in self.contents:
             content = content.block_strings()
             if isinstance(content, list):
@@ -82,9 +87,11 @@ class FunctionBlock(Block):
     contents:
         List of blocks to fill this block with.
     """
-    def __init__(self, func_type, name, args, contents=[], sticky_end=[]):
+    def __init__(self, func_type, name, args, contents=[], sticky_front=[],
+                 sticky_end=[]):
         super(FunctionBlock, self).__init__(
-            contents=contents, sticky_end=sticky_end)
+            contents=contents, sticky_front=sticky_front, sticky_end=sticky_end
+        )
         self.func_type = func_type
         self.args = args
         self.name = name
@@ -100,7 +107,10 @@ class FunctionBlock(Block):
             args=", ".join(["{} {}".format(argtype, argname)
                             for argtype, argname in self.args])
         )]
-        self.contents += self.sticky_end
+
+        # Add the sticky front and end
+        self.contents = self.sticky_front + self.contents + self.sticky_end
+
         for content in self.contents:
             content = content.block_strings()
             if isinstance(content, list):
@@ -116,9 +126,11 @@ class ForBlock(Block):
     """
     Block for for loops
     """
-    def __init__(self, iterator, max_iteration, contents=[], sticky_end=[]):
+    def __init__(self, iterator, max_iteration, contents=[], sticky_front=[],
+                 sticky_end=[]):
         super(ForBlock, self).__init__(
-            contents=contents, sticky_end=sticky_end)
+            contents=contents, sticky_front=sticky_front, sticky_end=sticky_end
+        )
         self.iterator = iterator
         self.max_iteration = max_iteration
 
@@ -128,7 +140,10 @@ class ForBlock(Block):
             "for ({iterator} = 0; i < {max_iteration}; {iterator}++){{"
             .format(iterator=self.iterator, max_iteration=self.max_iteration)
         ]
-        self.contents += self.sticky_end
+
+        # Add the sticky front and end
+        self.contents = self.sticky_front + self.contents + self.sticky_end
+
         for content in self.contents:
             content = content.block_strings()
             if isinstance(content, list):
