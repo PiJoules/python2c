@@ -29,14 +29,15 @@ def includes_from_code(code):
     return includes
 
 
-def main_func():
+def main_function():
     """
     Return a standard main function block.
     """
     main_block = FunctionBlock(
         "int", "main", [
-            ExprBlock("int", "argc"),
-            ExprBlock("char", "argv", pointer_depth=1, array_depth=1)
+            ExprBlock("int", "argc", is_arg=True),
+            ExprBlock("char", "argv", pointer_depth=1, array_depth=1,
+                      is_arg=True)
         ],
         sticky_end=[StringBlock("return 0;")]
     )
@@ -229,7 +230,8 @@ def main():
     top.append_blocks(includes_from_code(code))
 
     # Add main function
-    top.append_block(main_func())
+    main_func = main_function()
+    top.append_block(main_func)
 
     with open(args.file, "r") as f:
         nodes = ast.parse(f.read()).body
@@ -243,11 +245,12 @@ def main():
 
             # Add unique iterator (int) that may be reused
             iterator_block = ExprBlock("int", iterator)
-            if iterator_block not in top.last.variables:
-                top.last.append_block(ExprBlock("int", iterator))
+            if iterator_block not in main_func.variables:
+                main_func.append_block(ExprBlock("int", iterator))
 
             if node.iter.func.id == "range":
-                # Create a new list to be immediately used then destroyed
+                # Create a new list to be immediately used then destroyed.
+                # First find the appropriate parameters for the C range func.
                 if len(node.iter.args) == 1:
                     start = 0
                     stop = handle_op_node(node.iter.args[0])
@@ -261,17 +264,38 @@ def main():
                     stop = handle_op_node(node.iter.args[1])
                     step = handle_op_node(node.iter.args[2])
                 else:
-                    raise Exception("Invalid number of arguments found for range")
+                    raise Exception(
+                        "Invalid number of arguments found for range")
 
-                top.last.append_block(StringBlock("Object *temp_range_list1 = range({},{},{});".format(start, stop, step)))
-                # Add unique list to iterate over
+                # Create the range
+                range_obj = AssignBlock(
+                    "Object", "temp_range_list"+str(len(main_func.variables)),
+                    "range({},{},{})".format(start, stop, step),
+                    pointer_depth=1)
 
+                # Create the getter object for the iterator.
+                # This does not need ot be freed since we are just
+                # redirecting a pointer.
+                num_obj = AssignBlock(
+                    "Object", "iter_" + iterator,
+                    "list_get({}, {})"
+                    .format(range_obj.name, iterator),
+                    pointer_depth=1)
+
+                # Create the loop, and put the range constructor before it
+                # and the range destructor after it.
                 # For some reason, the variables flag is populated with
                 # the same ones added to the last ForBlock in the previous
                 # iteration. Not including the variables=[] will raise this
                 # error again.
-                top.last.append_block(ForBlock(iterator, "temp_range_list1->length", variables=[]))
+                range_block = ForBlock(
+                    iterator, "{}->length".format(range_obj.name),
+                    before=[range_obj], after=[range_obj.destructor()],
+                    sticky_front=[num_obj],
+                    variables=[])
 
+                # Add the contents of the body of the for loop.
+                # Filter for unecessary lines first.
                 for_body = filter_body_nodes(node.body)
                 for f_node in for_body:
                     if isinstance(f_node, ast.Expr):
@@ -279,11 +303,15 @@ def main():
                             if f_node.value.func.id == "print":
                                 arguments = f_node.value.args
                                 if len(arguments) == 1:
-                                    top.last.last.append_block(StringBlock("Object *num_{iterator} = list_get(temp_range_list1, {iterator});".format(iterator=iterator)))
-                                    top.last.last.append_block(StringBlock("char *num_str_{iterator} = str(num_{iterator});".format(iterator=iterator)))
-                                    top.last.last.append_block(StringBlock('printf("%s\\n", num_str_{iterator});'.format(iterator=iterator)))
-                                    top.last.last.append_block(StringBlock("free(num_str_{iterator});".format(iterator=iterator)))
-                top.last.append_block(StringBlock("destroy(temp_range_list1);"))
+                                    # TODO: Actually handle the contents of
+                                    # the contents later instead of just
+                                    # hardcoding it
+                                    range_block.append_block(StringBlock("char *{iterator}_str = str({iterator});".format(iterator=num_obj.name)))
+                                    range_block.append_block(StringBlock('printf("%s\\n", {iterator}_str);'.format(iterator=num_obj.name)))
+                                    range_block.append_block(StringBlock("free({iterator}_str);".format(iterator=num_obj.name)))
+
+                # Add the for loop to the parent block
+                main_func.append_block(range_block)
 
     if args.compile_check:
         return 0 if error_check_c(str(top)) else 2

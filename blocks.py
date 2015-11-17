@@ -41,6 +41,8 @@ class Block(object):
         self.should_indent = should_indent
         self.sticky_end = sticky_end
         self.sticky_front = sticky_front
+        self.before = before
+        self.after = after
         self.variables = variables
 
     @property
@@ -72,7 +74,8 @@ class Block(object):
         elif isinstance(block, ExprBlock):
             self.append_variable(block)
         else:
-            for var in self.variables:
+            # block is a block that can hold variables
+            for var in self.before + self.variables + self.after:
                 block.append_variable(var)
 
     def append_blocks(self, blocks):
@@ -117,10 +120,11 @@ class FunctionBlock(Block):
         List of blocks to fill this block with.
     """
     def __init__(self, func_type, name, args, contents=[], sticky_front=[],
-                 sticky_end=[], variables=[]):
+                 sticky_end=[], before=[], after=[], variables=[]):
         super(FunctionBlock, self).__init__(
             contents=contents, sticky_front=sticky_front,
-            sticky_end=sticky_end, variables=variables
+            sticky_end=sticky_end, before=before, after=after,
+            variables=variables
         )
         self.func_type = func_type
         self.args = args
@@ -136,7 +140,9 @@ class FunctionBlock(Block):
         formatted blocks.
         """
         indentation = " "*self.indent if self.should_indent else ""
-        child_contents = ["{type} {name}({args}){{".format(
+
+        child_contents = map(str, self.before)
+        child_contents += ["{type} {name}({args}){{".format(
             type=self.func_type, name=self.name,
             args=", ".join(map(str, self.args))
         )]
@@ -149,6 +155,9 @@ class FunctionBlock(Block):
             else:
                 child_contents.append(indentation + str(content))
         child_contents += ["}"]
+
+        child_contents += map(str, self.after)
+
         return child_contents
 
 
@@ -157,17 +166,20 @@ class ForBlock(Block):
     Block for for loops
     """
     def __init__(self, iterator, max_iteration, contents=[], sticky_front=[],
-                 sticky_end=[], variables=[]):
+                 sticky_end=[], before=[], after=[], variables=[]):
         super(ForBlock, self).__init__(
             contents=contents, sticky_front=sticky_front,
-            sticky_end=sticky_end, variables=variables
+            sticky_end=sticky_end, before=before, after=after,
+            variables=variables
         )
         self.iterator = iterator
         self.max_iteration = max_iteration
 
     def block_strings(self):
         indentation = " "*self.indent if self.should_indent else ""
-        child_contents = [
+
+        child_contents = map(str, self.before)
+        child_contents += [
             "for ({iterator} = 0; i < {max_iteration}; {iterator}++){{"
             .format(iterator=self.iterator, max_iteration=self.max_iteration)
         ]
@@ -180,6 +192,8 @@ class ForBlock(Block):
             else:
                 child_contents.append(indentation + str(content))
         child_contents += ["}"]
+        child_contents += map(str, self.after)
+
         return child_contents
 
 
@@ -188,7 +202,8 @@ class ExprBlock(Block):
     Class for specifically declaring a variable.
     """
 
-    def __init__(self, data_type, name, pointer_depth=0, array_depth=0):
+    def __init__(self, data_type, name, pointer_depth=0, array_depth=0,
+                 is_arg=False):
         """
         data_type:
             Data type (int, float, some typedef, etc.)
@@ -200,6 +215,9 @@ class ExprBlock(Block):
         array_depth:
             Essentially number of bracket pairs to put to the right of the
             argument name when printing.
+        is_arg:
+            If this block is an argument to a function, in which case, there
+            should be no semicolon in the str representation of this.
         """
         # TODO: Add support for const and other qualifiers later.
         super(ExprBlock, self).__init__(should_indent=False)
@@ -207,6 +225,7 @@ class ExprBlock(Block):
         self.name = name
         self.pointer_depth = pointer_depth
         self.array_depth = array_depth
+        self.is_arg = is_arg
 
     def block_strings(self):
         return str(self)
@@ -215,12 +234,12 @@ class ExprBlock(Block):
         return self.name == other.name
 
     def __str__(self):
-        return "{} {}{}{};".format(
+        return "{} {}{}{}{}".format(
             self.data_type, "*"*self.pointer_depth, self.name,
-            "[]"*self.array_depth)
+            "[]"*self.array_depth, "" if self.is_arg else ";")
 
 
-def AssignBlock(ExprBlock):
+class AssignBlock(ExprBlock):
     """
     Class for assigning a variable.
     """
@@ -237,6 +256,13 @@ def AssignBlock(ExprBlock):
             array_depth=array_depth
         )
         self.value = value
+
+    def destructor(self):
+        if self.data_type == "Object":
+            return StringBlock("destroy({});".format(self.name))
+        else:
+            raise Exception(("Attempting to call destroy on a variable that"
+                             "isn't an object."))
 
     def __str__(self):
         return "{} {}{}{} = {};".format(
