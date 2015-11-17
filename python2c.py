@@ -9,6 +9,9 @@ import os
 import subprocess
 
 from blocks import *
+# from ctypes import *
+
+from arg_positions import prettyparseprint
 
 
 def includes_from_code(code):
@@ -23,7 +26,6 @@ def includes_from_code(code):
 
     # Add a blank line for no reason
     includes.append(StringBlock())
-
     return includes
 
 
@@ -32,7 +34,10 @@ def main_func():
     Return a standard main function block.
     """
     main_block = FunctionBlock(
-        "int", "main", [("int", "argc"), ("char", "*argv[]")],
+        "int", "main", [
+            ExprBlock("int", "argc"),
+            ExprBlock("char", "argv", pointer_depth=1, array_depth=1)
+        ],
         sticky_end=[StringBlock("return 0;")]
     )
     return main_block
@@ -100,6 +105,15 @@ def get_op(op, arg1, arg2):
     elif isinstance(op, ast.BitAnd):
         return "{} & {}".format(arg1, arg2)
     raise Exception("Could not identify operator " + str(op))
+
+
+def handle_op_node(node):
+    if isinstance(node, ast.BinOp):
+        if isinstance(node.left, ast.Num) and isinstance(node.right, ast.Num):
+            return get_op(node.op, node.left.n, node.right.n)
+    elif isinstance(node, ast.Num):
+        return node.n
+    raise Exception("Could not identify node op")
 
 
 def error_check_c(translated_code, execute=False):
@@ -201,8 +215,7 @@ def main():
     args = get_args()
     code = read_file(args.file)
 
-    if ((args.compile_check or args.execute) and
-            not error_check_python(args.file)):
+    if not error_check_python(args.file):
         return 1
 
     # Setup
@@ -216,7 +229,7 @@ def main():
     top.append_blocks(includes_from_code(code))
 
     # Add main function
-    top.append(main_func())
+    top.append_block(main_func())
 
     with open(args.file, "r") as f:
         nodes = ast.parse(f.read()).body
@@ -224,17 +237,41 @@ def main():
     nodes = filter_body_nodes(nodes)
 
     for node in nodes:
+        # prettyparseprint(node)
         if isinstance(node, ast.For):
             iterator = node.target.id
-            top.last.append(StringBlock("int {};".format(iterator)))
+
+            # Add unique iterator (int) that may be reused
+            iterator_block = ExprBlock("int", iterator)
+            if iterator_block not in top.last.variables:
+                top.last.append_block(ExprBlock("int", iterator))
+
             if node.iter.func.id == "range":
+                # Create a new list to be immediately used then destroyed
                 if len(node.iter.args) == 1:
-                    argument = node.iter.args[0]
-                    if isinstance(argument, ast.BinOp):
-                        if isinstance(argument.left, ast.Num) and isinstance(argument.right, ast.Num):
-                            op = get_op(argument.op, argument.left.n, argument.right.n)
-                            top.last.append(StringBlock("Object *temp_range_list1 = range(0,{},1);".format(op)))
-                            top.last.append(ForBlock(iterator, "temp_range_list1->length"))
+                    start = 0
+                    stop = handle_op_node(node.iter.args[0])
+                    step = 1
+                elif len(node.iter.args) == 2:
+                    start = handle_op_node(node.iter.args[0])
+                    stop = handle_op_node(node.iter.args[1])
+                    step = 1
+                elif len(node.iter.args) == 3:
+                    start = handle_op_node(node.iter.args[0])
+                    stop = handle_op_node(node.iter.args[1])
+                    step = handle_op_node(node.iter.args[2])
+                else:
+                    raise Exception("Invalid number of arguments found for range")
+
+                top.last.append_block(StringBlock("Object *temp_range_list1 = range({},{},{});".format(start, stop, step)))
+                # Add unique list to iterate over
+
+                # For some reason, the variables flag is populated with
+                # the same ones added to the last ForBlock in the previous
+                # iteration. Not including the variables=[] will raise this
+                # error again.
+                top.last.append_block(ForBlock(iterator, "temp_range_list1->length", variables=[]))
+
                 for_body = filter_body_nodes(node.body)
                 for f_node in for_body:
                     if isinstance(f_node, ast.Expr):
@@ -242,11 +279,11 @@ def main():
                             if f_node.value.func.id == "print":
                                 arguments = f_node.value.args
                                 if len(arguments) == 1:
-                                    top.last.last.append(StringBlock("Object *num_{iterator} = list_get(temp_range_list1, {iterator});".format(iterator=iterator)))
-                                    top.last.last.append(StringBlock("char *num_str_{iterator} = str(num_{iterator});".format(iterator=iterator)))
-                                    top.last.last.append(StringBlock('printf("%s\\n", num_str_{iterator});'.format(iterator=iterator)))
-                                    top.last.last.append(StringBlock("free(num_str_{iterator});".format(iterator=iterator)))
-                top.last.append(StringBlock("destroy(temp_range_list1);"))
+                                    top.last.last.append_block(StringBlock("Object *num_{iterator} = list_get(temp_range_list1, {iterator});".format(iterator=iterator)))
+                                    top.last.last.append_block(StringBlock("char *num_str_{iterator} = str(num_{iterator});".format(iterator=iterator)))
+                                    top.last.last.append_block(StringBlock('printf("%s\\n", num_str_{iterator});'.format(iterator=iterator)))
+                                    top.last.last.append_block(StringBlock("free(num_str_{iterator});".format(iterator=iterator)))
+                top.last.append_block(StringBlock("destroy(temp_range_list1);"))
 
     if args.compile_check:
         return 0 if error_check_c(str(top)) else 2
