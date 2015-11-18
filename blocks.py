@@ -75,8 +75,12 @@ class Block(object):
             self.append_variable(block)
         else:
             # block is a block that can hold variables
-            for var in self.before + self.variables + self.after:
+            for var in self.variables:
                 block.append_variable(var)
+            for var in block.before + block.after:
+                if (isinstance(var, ExprBlock) and
+                        var not in self.variables):
+                    self.append_variable(var)
 
     def append_blocks(self, blocks):
         """

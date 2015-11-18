@@ -9,7 +9,6 @@ import os
 import subprocess
 
 from blocks import *
-# from ctypes import *
 
 from arg_positions import prettyparseprint
 
