@@ -125,9 +125,9 @@ def evaluate_node(node, parent):
         iterator = node.target.id
 
         # Add unique iterator (int) that may be reused
-        iterator_block = ExprBlock("int", iterator)
+        iterator_block = ExprBlock("int", "iter_" + str(iterator))
         if iterator_block not in parent.variables:
-            parent.append_block(ExprBlock("int", iterator))
+            parent.append_block(iterator_block)
 
         if node.iter.func.id == "range":
             # Create a new list to be immediately used then destroyed.
@@ -158,36 +158,43 @@ def evaluate_node(node, parent):
             # This does not need ot be freed since we are just
             # redirecting a pointer.
             num_obj = AssignBlock(
-                "Object", "iter_" + iterator,
+                "Object", iterator,
                 "list_get({}, {})"
-                .format(range_obj.name, iterator),
+                .format(range_obj.name, iterator_block.name),
                 pointer_depth=1)
 
             # Create the loop, and put the range constructor before it
             # and the range destructor after it.
             range_block = ForBlock(
-                iterator, "{}->length".format(range_obj.name),
+                iterator_block.name, "{}->length".format(range_obj.name),
                 before=[range_obj], after=[range_obj.destructor()],
                 sticky_front=[num_obj])
+
+            # Add the for loop to the parent block
+            parent.append_block(range_block)
 
             # Add the contents of the body of the for loop.
             # Filter for unecessary lines first.
             for_body = filter_body_nodes(node.body)
             for f_node in for_body:
-                if isinstance(f_node, ast.Expr):
-                    if isinstance(f_node.value, ast.Call):
-                        if f_node.value.func.id == "print":
-                            arguments = f_node.value.args
-                            if len(arguments) == 1:
-                                # TODO: Actually handle the contents of
-                                # the contents later instead of just
-                                # hardcoding it
-                                range_block.append_block(StringBlock("char *{iterator}_str = str({iterator});".format(iterator=num_obj.name)))
-                                range_block.append_block(StringBlock('printf("%s\\n", {iterator}_str);'.format(iterator=num_obj.name)))
-                                range_block.append_block(StringBlock("free({iterator}_str);".format(iterator=num_obj.name)))
-
-            # Add the for loop to the parent block
-            parent.append_block(range_block)
+                evaluate_node(f_node, range_block)
+    elif isinstance(node, ast.Expr):
+        if isinstance(node.value, ast.Call):
+            if node.value.func.id == "print":
+                arguments = node.value.args
+                if len(arguments) == 1:
+                    arg = arguments[0]
+                    parent.append_blocks([
+                        StringBlock(
+                            "char *{iterator}_str = str({iterator});"
+                            .format(iterator=arg.id)),
+                        StringBlock(
+                            'printf("%s\\n", {iterator}_str);'
+                            .format(iterator=arg.id)),
+                        StringBlock(
+                            "free({iterator}_str);"
+                            .format(iterator=arg.id))
+                    ])
 
 
 def error_check_c(translated_code, execute=False):

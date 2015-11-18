@@ -53,6 +53,11 @@ class Block(object):
         self.after = after
         self.variables = variables
 
+        # Other initialization
+        for var in sticky_front + sticky_end:
+            if isinstance(var, ExprBlock) and var not in variables:
+                self.append_variable(var)
+
     @property
     def last(self):
         return self.contents[-1]
@@ -193,7 +198,7 @@ class ForBlock(Block):
 
         child_contents = map(str, self.before)
         child_contents += [
-            "for ({iterator} = 0; i < {max_iteration}; {iterator}++){{"
+            "for({iterator} = 0; {iterator} < {max_iteration}; {iterator}++){{"
             .format(iterator=self.iterator, max_iteration=self.max_iteration)
         ]
 
