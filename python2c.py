@@ -184,17 +184,23 @@ def evaluate_node(node, parent):
                 arguments = node.value.args
                 if len(arguments) == 1:
                     arg = arguments[0]
-                    parent.append_blocks([
-                        StringBlock(
-                            "char *{iterator}_str = str({iterator});"
-                            .format(iterator=arg.id)),
-                        StringBlock(
-                            'printf("%s\\n", {iterator}_str);'
-                            .format(iterator=arg.id)),
-                        StringBlock(
-                            "free({iterator}_str);"
-                            .format(iterator=arg.id))
-                    ])
+                    if isinstance(arg, ast.Name):
+                        # Arg is a variable
+                        parent.append_blocks([
+                            StringBlock(
+                                "char *{iterator}_str = str({iterator});"
+                                .format(iterator=arg.id)),
+                            StringBlock(
+                                'printf("%s\\n", {iterator}_str);'
+                                .format(iterator=arg.id)),
+                            StringBlock(
+                                "free({iterator}_str);"
+                                .format(iterator=arg.id))
+                        ])
+                    elif isinstance(arg, ast.Str):
+                        # Arg is string
+                        parent.append_block(
+                            StringBlock('printf("{}\\n");'.format(arg.s)))
 
 
 def error_check_c(translated_code, execute=False):
