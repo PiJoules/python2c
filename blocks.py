@@ -13,8 +13,8 @@ class Block(object):
 
     indent = 4
 
-    def __init__(self, contents=[], should_indent=True, sticky_front=[],
-                 sticky_end=[], before=[], after=[], variables=[]):
+    def __init__(self, contents=None, should_indent=True, sticky_front=None,
+                 sticky_end=None, before=None, after=None, variables=None):
         """
         contents:
             List of child blocks
@@ -36,6 +36,14 @@ class Block(object):
         variables:
             List of variables in the scope of this block.
         """
+        # Get around the mutable default arguments
+        contents = contents or []
+        sticky_front = sticky_front or []
+        sticky_end = sticky_end or []
+        before = before or []
+        after = after or []
+        variables = variables or []
+
         assert all(issubclass(child.__class__, Block) for child in contents)
         self.contents = contents
         self.should_indent = should_indent
@@ -123,8 +131,8 @@ class FunctionBlock(Block):
     contents:
         List of blocks to fill this block with.
     """
-    def __init__(self, func_type, name, args, contents=[], sticky_front=[],
-                 sticky_end=[], before=[], after=[], variables=[]):
+    def __init__(self, func_type, name, args, contents=None, sticky_front=None,
+                 sticky_end=None, before=None, after=None, variables=None):
         super(FunctionBlock, self).__init__(
             contents=contents, sticky_front=sticky_front,
             sticky_end=sticky_end, before=before, after=after,
@@ -169,8 +177,9 @@ class ForBlock(Block):
     """
     Block for for loops
     """
-    def __init__(self, iterator, max_iteration, contents=[], sticky_front=[],
-                 sticky_end=[], before=[], after=[], variables=[]):
+    def __init__(self, iterator, max_iteration, contents=None,
+                 sticky_front=None, sticky_end=None, before=None, after=None,
+                 variables=None):
         super(ForBlock, self).__init__(
             contents=contents, sticky_front=sticky_front,
             sticky_end=sticky_end, before=before, after=after,

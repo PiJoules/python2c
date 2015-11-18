@@ -283,15 +283,10 @@ def main():
 
                 # Create the loop, and put the range constructor before it
                 # and the range destructor after it.
-                # For some reason, the variables flag is populated with
-                # the same ones added to the last ForBlock in the previous
-                # iteration. Not including the variables=[] will raise this
-                # error again.
                 range_block = ForBlock(
                     iterator, "{}->length".format(range_obj.name),
                     before=[range_obj], after=[range_obj.destructor()],
-                    sticky_front=[num_obj],
-                    variables=[])
+                    sticky_front=[num_obj])
 
                 # Add the contents of the body of the for loop.
                 # Filter for unecessary lines first.
