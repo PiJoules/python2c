@@ -21,6 +21,8 @@ ayy lmao
   - Can print a static string.
 - 11/15/2015
   - Decided to use `ast` module to parse python code.
+- 11/17/2015
+  - Can implement for loop samples
 
 ## Todo
 - Be able to print a string with parameters

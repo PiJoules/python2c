@@ -116,6 +116,80 @@ def handle_op_node(node):
     raise Exception("Could not identify node op")
 
 
+def evaluate_node(node, parent):
+    """
+    Given a node, evaluate it and adda a result the parent node.
+    """
+    # prettyparseprint(node)
+    if isinstance(node, ast.For):
+        iterator = node.target.id
+
+        # Add unique iterator (int) that may be reused
+        iterator_block = ExprBlock("int", iterator)
+        if iterator_block not in parent.variables:
+            parent.append_block(ExprBlock("int", iterator))
+
+        if node.iter.func.id == "range":
+            # Create a new list to be immediately used then destroyed.
+            # First find the appropriate parameters for the C range func.
+            if len(node.iter.args) == 1:
+                start = 0
+                stop = handle_op_node(node.iter.args[0])
+                step = 1
+            elif len(node.iter.args) == 2:
+                start = handle_op_node(node.iter.args[0])
+                stop = handle_op_node(node.iter.args[1])
+                step = 1
+            elif len(node.iter.args) == 3:
+                start = handle_op_node(node.iter.args[0])
+                stop = handle_op_node(node.iter.args[1])
+                step = handle_op_node(node.iter.args[2])
+            else:
+                raise Exception(
+                    "Invalid number of arguments found for range")
+
+            # Create the range
+            range_obj = AssignBlock(
+                "Object", "temp_range_list"+str(len(parent.variables)),
+                "range({},{},{})".format(start, stop, step),
+                pointer_depth=1)
+
+            # Create the getter object for the iterator.
+            # This does not need ot be freed since we are just
+            # redirecting a pointer.
+            num_obj = AssignBlock(
+                "Object", "iter_" + iterator,
+                "list_get({}, {})"
+                .format(range_obj.name, iterator),
+                pointer_depth=1)
+
+            # Create the loop, and put the range constructor before it
+            # and the range destructor after it.
+            range_block = ForBlock(
+                iterator, "{}->length".format(range_obj.name),
+                before=[range_obj], after=[range_obj.destructor()],
+                sticky_front=[num_obj])
+
+            # Add the contents of the body of the for loop.
+            # Filter for unecessary lines first.
+            for_body = filter_body_nodes(node.body)
+            for f_node in for_body:
+                if isinstance(f_node, ast.Expr):
+                    if isinstance(f_node.value, ast.Call):
+                        if f_node.value.func.id == "print":
+                            arguments = f_node.value.args
+                            if len(arguments) == 1:
+                                # TODO: Actually handle the contents of
+                                # the contents later instead of just
+                                # hardcoding it
+                                range_block.append_block(StringBlock("char *{iterator}_str = str({iterator});".format(iterator=num_obj.name)))
+                                range_block.append_block(StringBlock('printf("%s\\n", {iterator}_str);'.format(iterator=num_obj.name)))
+                                range_block.append_block(StringBlock("free({iterator}_str);".format(iterator=num_obj.name)))
+
+            # Add the for loop to the parent block
+            parent.append_block(range_block)
+
+
 def error_check_c(translated_code, execute=False):
     """
     Check to see if there are any errors by checking the return
@@ -238,74 +312,7 @@ def main():
     nodes = filter_body_nodes(nodes)
 
     for node in nodes:
-        # prettyparseprint(node)
-        if isinstance(node, ast.For):
-            iterator = node.target.id
-
-            # Add unique iterator (int) that may be reused
-            iterator_block = ExprBlock("int", iterator)
-            if iterator_block not in main_func.variables:
-                main_func.append_block(ExprBlock("int", iterator))
-
-            if node.iter.func.id == "range":
-                # Create a new list to be immediately used then destroyed.
-                # First find the appropriate parameters for the C range func.
-                if len(node.iter.args) == 1:
-                    start = 0
-                    stop = handle_op_node(node.iter.args[0])
-                    step = 1
-                elif len(node.iter.args) == 2:
-                    start = handle_op_node(node.iter.args[0])
-                    stop = handle_op_node(node.iter.args[1])
-                    step = 1
-                elif len(node.iter.args) == 3:
-                    start = handle_op_node(node.iter.args[0])
-                    stop = handle_op_node(node.iter.args[1])
-                    step = handle_op_node(node.iter.args[2])
-                else:
-                    raise Exception(
-                        "Invalid number of arguments found for range")
-
-                # Create the range
-                range_obj = AssignBlock(
-                    "Object", "temp_range_list"+str(len(main_func.variables)),
-                    "range({},{},{})".format(start, stop, step),
-                    pointer_depth=1)
-
-                # Create the getter object for the iterator.
-                # This does not need ot be freed since we are just
-                # redirecting a pointer.
-                num_obj = AssignBlock(
-                    "Object", "iter_" + iterator,
-                    "list_get({}, {})"
-                    .format(range_obj.name, iterator),
-                    pointer_depth=1)
-
-                # Create the loop, and put the range constructor before it
-                # and the range destructor after it.
-                range_block = ForBlock(
-                    iterator, "{}->length".format(range_obj.name),
-                    before=[range_obj], after=[range_obj.destructor()],
-                    sticky_front=[num_obj])
-
-                # Add the contents of the body of the for loop.
-                # Filter for unecessary lines first.
-                for_body = filter_body_nodes(node.body)
-                for f_node in for_body:
-                    if isinstance(f_node, ast.Expr):
-                        if isinstance(f_node.value, ast.Call):
-                            if f_node.value.func.id == "print":
-                                arguments = f_node.value.args
-                                if len(arguments) == 1:
-                                    # TODO: Actually handle the contents of
-                                    # the contents later instead of just
-                                    # hardcoding it
-                                    range_block.append_block(StringBlock("char *{iterator}_str = str({iterator});".format(iterator=num_obj.name)))
-                                    range_block.append_block(StringBlock('printf("%s\\n", {iterator}_str);'.format(iterator=num_obj.name)))
-                                    range_block.append_block(StringBlock("free({iterator}_str);".format(iterator=num_obj.name)))
-
-                # Add the for loop to the parent block
-                main_func.append_block(range_block)
+        evaluate_node(node, main_func)
 
     if args.compile_check:
         return 0 if error_check_c(str(top)) else 2
