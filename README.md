@@ -6,7 +6,7 @@ This is gonna be a very long long-term project.
 ## Usage
 ```sh
 $ python python2c.py samples/print_test.py > print_test.c
-$ gcc print_test.c c_utils/*.c
+$ gcc samples/print_test.c c_utils/*.c
 $ ./a.out
 ayy lmao
 ```
