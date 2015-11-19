@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import ast
 
+from block_utils import *
+
 
 class Block(object):
     """
@@ -63,6 +65,18 @@ class Block(object):
     @property
     def last(self):
         return self.contents[-1]
+
+    def prepend_sticky_end(self, block):
+        """
+        Add a block to be stuck at the beginning of the sticky_end.
+        """
+        self.sticky_end = [block] + self.sticky_end
+
+    def append_sticky_end(self, block):
+        """
+        Add a block to be stuck at the end of sticky_end.
+        """
+        self.sticky_end.append(block)
 
     def append_variable(self, var):
         """
@@ -341,8 +355,20 @@ class PrintBlock(InlineBlock):
                 StringBlock("free({}_str);".format(var))
             ]
             super(PrintBlock, self).__init__(variables=[self.lines[0]])
-        elif isinstance(node, ast.Str):
-            var = node.s
+        elif is_literal(node):
+            if isinstance(node, ast.Str):
+                # Node is a string literal
+                var = node.s
+            elif isinstance(node, ast.Num):
+                # Node is a literal number
+                var = node.n
+            elif isinstance(node, ast.List) or isinstance(node, ast.Tuple):
+                pass
+            else:
+                raise Exception(
+                    "No support for the literal node of type {}"
+                    .format(node.__class__))
+
             self.lines = [StringBlock('printf("{}\\n");'.format(var))]
             super(PrintBlock, self).__init__()
         else:

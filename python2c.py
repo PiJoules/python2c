@@ -3,45 +3,11 @@
 from __future__ import print_function
 
 import sys
-import ast
 import os
 import shutil
 import subprocess
 
 import translate
-
-
-def prettyparseprintfile(filename, spaces=4):
-    with open(filename, "r") as f:
-        prettyparseprint(f.read(), spaces)
-
-
-def prettyparseprint(code, spaces=4):
-    node = ast.parse(code)
-    text = ast.dump(node)
-    indent_count = 0
-    i = 0
-    while i < len(text):
-        c = text[i]
-
-        if text[i:i+2] in ("()", "[]"):
-            i += 1
-        elif c in "([":
-            indent_count += 1
-            indentation = spaces*indent_count
-            text = text[:i+1] + "\n" + " "*indentation + text[i+1:]
-        elif c in ")]":
-            indent_count -= 1
-            indentation = spaces*indent_count
-            text = text[:i] + "\n" + " "*indentation + text[i:]
-            i += 1 + indentation
-
-            if text[i:i+3] in ("), ", "], "):
-                text = text[:i+2] + "\n" + " "*indentation + text[i+3:]
-                i += indentation
-
-        i += 1
-    print(text)
 
 
 def which(program):
@@ -183,6 +149,10 @@ def get_args():
         "and run valgrind on it to see if there are any memory leaks "
         "in the C translation."
     )
+    parser.add_argument(
+        "-a", "--ast-tree", default=False, action="store_true",
+        help="Print the abstract syntax tree of the python code."
+    )
 
     return parser.parse_args()
 
@@ -199,6 +169,9 @@ def main():
 
     if not error_check_python(args.file):
         return 1
+    elif args.ast_tree:
+        translate.prettyparseprintfile(args.file)
+        return 0
 
     translated_code = translate.translate(
         args.file, indent_size=args.indent_size)
