@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
+import ast
+
 
 class Block(object):
     """
@@ -66,6 +68,7 @@ class Block(object):
         """
         Add a variable name to the list of variables.
         """
+        assert isinstance(var, ExprBlock)
         if var in self.variables:
             raise Exception(
                 ("Attempted to add variable '{}' in scope of {} when it "
@@ -87,9 +90,18 @@ class Block(object):
         elif isinstance(block, ExprBlock):
             self.append_variable(block)
         else:
+            # block is an inline block that contains variables
+            # which should be added to this block's scope
+            if isinstance(block, InlineBlock):
+                for var in block.variables:
+                    if (isinstance(var, ExprBlock) and
+                            var not in self.variables):
+                        self.append_variable(var)
+
             # block is a block that can hold variables
             for var in self.variables:
-                block.append_variable(var)
+                if var not in block.variables:
+                    block.append_variable(var)
             for var in block.before + block.after:
                 if (isinstance(var, ExprBlock) and
                         var not in self.variables):
@@ -215,7 +227,22 @@ class ForBlock(Block):
         return child_contents
 
 
-class ExprBlock(Block):
+class InlineBlock(Block):
+    """
+    Class representing blocks that
+    - are not indented
+    - do not contain a body
+    """
+
+    def __init__(self, contents=None, before=None, after=None, variables=None):
+        super(InlineBlock, self).__init__(
+            contents=contents, sticky_front=None, should_indent=False,
+            sticky_end=None, before=before, after=after,
+            variables=variables
+        )
+
+
+class ExprBlock(InlineBlock):
     """
     Class for specifically declaring a variable.
     """
@@ -238,7 +265,7 @@ class ExprBlock(Block):
             should be no semicolon in the str representation of this.
         """
         # TODO: Add support for const and other qualifiers later.
-        super(ExprBlock, self).__init__(should_indent=False)
+        super(ExprBlock, self).__init__()
         self.data_type = data_type
         self.name = name
         self.pointer_depth = pointer_depth
@@ -264,10 +291,18 @@ class AssignBlock(ExprBlock):
 
     def __init__(self, data_type, name, value, pointer_depth=0, array_depth=0):
         """
-        target:
-            The expr block.
+        data_type:
+            Data type (int, float, some typedef, etc.)
+        name:
+            Name of the argument
         value:
             The right side of the equals sign.
+        pointer_depth:
+            Essentially number of pointers to put to the left of the
+            argument name when printing.
+        array_depth:
+            Essentially number of bracket pairs to put to the right of the
+            argument name when printing.
         """
         super(AssignBlock, self).__init__(
             data_type=data_type, name=name, pointer_depth=pointer_depth,
@@ -288,7 +323,41 @@ class AssignBlock(ExprBlock):
             "[]"*self.array_depth, self.value)
 
 
-class StringBlock(Block):
+class PrintBlock(InlineBlock):
+    """
+    Class for specifically printing a node.
+    """
+
+    def __init__(self, node):
+        if isinstance(node, ast.Name):
+            # Node is a variable
+            # Call the str() function, then immediately free it.
+            var = node.id
+            self.lines = [
+                AssignBlock(
+                    "char", "{}_str".format(var), "str({})".format(var),
+                    pointer_depth=1),
+                StringBlock('printf("%s\\n", {}_str);'.format(var)),
+                StringBlock("free({}_str);".format(var))
+            ]
+            super(PrintBlock, self).__init__(variables=[self.lines[0]])
+        elif isinstance(node, ast.Str):
+            var = node.s
+            self.lines = [StringBlock('printf("{}\\n");'.format(var))]
+            super(PrintBlock, self).__init__()
+        else:
+            raise Exception(
+                "No support for printing node of type {}"
+                .format(node.__class__))
+
+    def block_strings(self):
+        return self.lines
+
+    def __str__(self):
+        return "\n".join(self.block_strings())
+
+
+class StringBlock(InlineBlock):
     """
     Block for representing a single line/string from code.
     """

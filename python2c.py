@@ -8,7 +8,7 @@ import ast
 import os
 import subprocess
 
-from blocks import *
+import blocks
 
 
 def prettyparseprintfile(filename, spaces=4):
@@ -51,11 +51,11 @@ def includes_from_code(code):
     """
     includes = []
     if any("print" in line for line in code):
-        includes.append(StringBlock("#include <stdio.h>"))
-        includes.append(StringBlock('#include "c_utils/utils.h"'))
+        includes.append(blocks.StringBlock("#include <stdio.h>"))
+        includes.append(blocks.StringBlock('#include "c_utils/utils.h"'))
 
     # Add a blank line for no reason
-    includes.append(StringBlock())
+    includes.append(blocks.StringBlock())
     return includes
 
 
@@ -63,13 +63,13 @@ def main_function():
     """
     Return a standard main function block.
     """
-    main_block = FunctionBlock(
+    main_block = blocks.FunctionBlock(
         "int", "main", [
-            ExprBlock("int", "argc", is_arg=True),
-            ExprBlock("char", "argv", pointer_depth=1, array_depth=1,
+            blocks.ExprBlock("int", "argc", is_arg=True),
+            blocks.ExprBlock("char", "argv", pointer_depth=1, array_depth=1,
                       is_arg=True)
         ],
-        sticky_end=[StringBlock("return 0;")]
+        sticky_end=[blocks.StringBlock("return 0;")]
     )
     return main_block
 
@@ -156,7 +156,7 @@ def evaluate_node(node, parent):
         iterator = node.target.id
 
         # Add unique iterator (int) that may be reused
-        iterator_block = ExprBlock("int", "iter_" + str(iterator))
+        iterator_block = blocks.ExprBlock("int", "iter_" + str(iterator))
         if iterator_block not in parent.variables:
             parent.append_block(iterator_block)
 
@@ -180,7 +180,7 @@ def evaluate_node(node, parent):
                     "Invalid number of arguments found for range")
 
             # Create the range
-            range_obj = AssignBlock(
+            range_obj = blocks.AssignBlock(
                 "Object", "temp_range_list"+str(len(parent.variables)),
                 "range({},{},{})".format(start, stop, step),
                 pointer_depth=1)
@@ -188,7 +188,7 @@ def evaluate_node(node, parent):
             # Create the getter object for the iterator.
             # This does not need ot be freed since we are just
             # redirecting a pointer.
-            num_obj = AssignBlock(
+            num_obj = blocks.AssignBlock(
                 "Object", iterator,
                 "list_get({}, {})"
                 .format(range_obj.name, iterator_block.name),
@@ -196,7 +196,7 @@ def evaluate_node(node, parent):
 
             # Create the loop, and put the range constructor before it
             # and the range destructor after it.
-            range_block = ForBlock(
+            range_block = blocks.ForBlock(
                 iterator_block.name, "{}->length".format(range_obj.name),
                 before=[range_obj], after=[range_obj.destructor()],
                 sticky_front=[num_obj])
@@ -215,23 +215,7 @@ def evaluate_node(node, parent):
                 arguments = node.value.args
                 if len(arguments) == 1:
                     arg = arguments[0]
-                    if isinstance(arg, ast.Name):
-                        # Arg is a variable
-                        parent.append_blocks([
-                            StringBlock(
-                                "char *{iterator}_str = str({iterator});"
-                                .format(iterator=arg.id)),
-                            StringBlock(
-                                'printf("%s\\n", {iterator}_str);'
-                                .format(iterator=arg.id)),
-                            StringBlock(
-                                "free({iterator}_str);"
-                                .format(iterator=arg.id))
-                        ])
-                    elif isinstance(arg, ast.Str):
-                        # Arg is string
-                        parent.append_block(
-                            StringBlock('printf("{}\\n");'.format(arg.s)))
+                    parent.append_block(blocks.PrintBlock(arg))
 
 
 def error_check_c(translated_code, execute=False):
@@ -337,8 +321,8 @@ def main():
         return 1
 
     # Setup
-    Block.indent = args.indent_size
-    top = Block(should_indent=False)
+    blocks.Block.indent = args.indent_size
+    top = blocks.Block(should_indent=False)
 
     # Run filtering process
     code = filter(should_keep_line, code)
