@@ -15,14 +15,15 @@ Object *new_List(){
 }
 
 void destroy_List(Object *list){
-    assert(strcmp(list->name, "list") == 0);
+    assert(strcmp(list->name, "list") == 0 ||
+           strcmp(list->name, "string") == 0);
 
     // Free each element in the list and the data it holds.
     Node *current;
     while(list->head != NULL) {
         current = list->head;
         list->head = current->next;
-        free(current->data);
+        free(current->data); // Use free (not destroy) because data was malloc'd
         free(current);
     }
 
@@ -114,20 +115,34 @@ char *list_str(Object *list){
         // but I am just trying to get this to work for now.
         elem = list_get(list, i);
         char *elem_str = str(elem);
-
-        // Resize the list str_rep
         int elem_len = strlen(elem_str);
-        len += elem_len + 1; // The string len + ,
-        str_rep = (char*)realloc(str_rep, sizeof(char)*len);
-        strncpy(str_rep + start, elem_str, elem_len);
-        *(str_rep + start + elem_len) = ',';
-        start += elem_len + 1;
+
+        if (strcmp(elem->name, "string") == 0){
+            // Resize the list str_rep
+            len += elem_len + 4; // The string len + ', ' + 2 double quotes
+            str_rep = (char*)realloc(str_rep, sizeof(char)*len);
+            *(str_rep + start) = '\'';
+            strncpy(str_rep + start + 1, elem_str, elem_len);
+            *(str_rep + start + 1 + elem_len) = '\'';
+            *(str_rep + start + 1 + elem_len+1) = ',';
+            *(str_rep + start + 1 + elem_len+2) = ' ';
+            start += elem_len + 4;
+        }
+        else {
+            // Resize the list str_rep
+            len += elem_len + 2; // The string len + ', '
+            str_rep = (char*)realloc(str_rep, sizeof(char)*len);
+            strncpy(str_rep + start, elem_str, elem_len);
+            *(str_rep + start + elem_len) = ',';
+            *(str_rep + start + elem_len+1) = ' ';
+            start += elem_len + 2;
+        }
 
         free(elem_str);
     }
 
     if (list->length > 0){
-        len--;
+        len -= 2;
     }
 
     *(str_rep+len-2) = ']';

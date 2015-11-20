@@ -363,7 +363,8 @@ class PrintBlock(InlineBlock):
                 # Node is a literal number
                 var = node.n
             elif isinstance(node, ast.List) or isinstance(node, ast.Tuple):
-                pass
+                raise Exception(
+                    "No support yet for node of type List or Tuple")
             else:
                 raise Exception(
                     "No support for the literal node of type {}"

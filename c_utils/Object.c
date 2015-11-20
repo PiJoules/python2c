@@ -42,6 +42,12 @@ void destroy(Object *obj){
     else if (strcmp(obj->name, "list") == 0){
         destroy_List(obj);
     }
+    else if (strcmp(obj->name, "string") == 0){
+        destroy_List(obj);
+    }
+    else if (strcmp(obj->name, "char") == 0){
+        destroy_Char(obj);
+    }
     else {
         free(obj);
     }
@@ -61,6 +67,23 @@ char *str(Object *obj){
     }
     else if (strcmp(obj->name, "list") == 0){
         return list_str(obj);
+    }
+    else if (strcmp(obj->name, "char") == 0){
+        char *str_rep = (char*)malloc(2);
+        sprintf(str_rep, "%c", obj->value);
+        return str_rep;
+    }
+    else if (strcmp(obj->name, "string") == 0){
+        int i;
+        char *str_rep = (char*)malloc(sizeof(char)*(obj->length + 1));
+        for (i = 0; i < obj->length; i++){
+            Object *c = list_get(obj, i);
+            char *c_str = str(c);
+            strncpy(str_rep+i, c_str, 1);
+            free(c_str);
+        }
+        *(str_rep + obj->length) = 0;
+        return str_rep;
     }
 
     // Return the name by default

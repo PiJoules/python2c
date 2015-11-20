@@ -9,4 +9,4 @@ print(3)
 
 x = 5
 print(x)
-# print([x, "ayy lmao"])
+print([x, "ayy lmao"])

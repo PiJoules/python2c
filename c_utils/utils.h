@@ -10,6 +10,8 @@
 #include "Object.h"
 #include "Integer.h"
 #include "List.h"
+#include "Char.h"
+#include "String_.h"
 
 char *dynamic_str(char *);
 
