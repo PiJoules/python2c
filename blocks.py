@@ -38,6 +38,17 @@ class BodyBlock(Block):
         assert isinstance(var, values.Variable)
         return var in self.variables
 
+    def replace_variable(self, old_var, new_var):
+        for i, var in enumerate(self.variables):
+            if var == old_var:
+                self.variables[i] = new_var
+
+    def get_variable(self, var_name):
+        for var in self.variables:
+            if var.name == var_name:
+                return var
+        return None
+
 
 class InlineBlock(Block):
     def __init__(self):
@@ -135,14 +146,20 @@ class FunctionBlock(BodyBlock):
 
     def append_block(self, block):
         if isinstance(block, FunctionBlock):
+            # If it is a function, add the contained function
+            # to the list.
             self.contents.append(block)
             self.functions.append(block.function)
         elif isinstance(block, AssignBlock):
             if self.contains_variable(block.lh_var):
+                if (self.get_variable(block.lh_var.name).meta_type !=
+                        block.lh_var.meta_type):
+                    # Replace the old variable
+                    self.replace_variable(block.lh_var, block.lh_var)
                 self.contents.append(ReassignBlock(block.lh_var, block.rh_var))
             else:
+                # Add a new variabe
                 self.contents.append(block)
-                # if block.lh_var.data_type == "Object":
                 self.variables.append(block.lh_var)
         elif isinstance(block, InlineBlock):
             self.contents.append(block)

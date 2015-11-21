@@ -14,3 +14,7 @@ print([x, "ayy lmao"])
 
 x2 = 8
 print([x, "ayy lmao", x2])
+print([2, 3, ["4", "5"]])
+print([2, x2, x, ["4", "5"], x])
+x2 = "8"
+print([2, x2, x, ["4", x2, "5"], x])

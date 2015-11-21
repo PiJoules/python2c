@@ -82,6 +82,15 @@ def filter_body_nodes(body):
     return nodes
 
 
+def evaluate_variable_str(name, parent_block):
+    str_name = name + "_str"
+    var = values.Variable("char", str_name, pointer_depth=1)
+    str_func = values.Function(
+        "char", "str", [values.PassedArgument("Object", name)])
+    str_create = blocks.AssignBlock(var, str_func)
+    parent_block.append_block(str_create)
+
+
 def evaluate_print(args, parent_block):
     if len(args) == 1:
         arg = args[0]
@@ -96,19 +105,13 @@ def evaluate_print(args, parent_block):
             # Then convert it to a string
             # Do not immediately free it since it will
             # be freed at the end of the function.
-            list_str, variables = list_to_str(arg)
+            list_str, variables = list_to_str(arg, parent_block.variables)
             if len(variables) == 0:
                 parent_block.append_block(
                     blocks.StringBlock('printf("{}\\n");'.format(list_str)))
             else:
                 for variable in variables:
-                    name = variable
-                    str_name = name + "_str"
-                    var = values.Variable("char", str_name, pointer_depth=1)
-                    str_func = values.Function(
-                        "char", "str", [values.PassedArgument("Object", name)])
-                    str_create = blocks.AssignBlock(var, str_func)
-                    parent_block.append_block(str_create)
+                    evaluate_variable_str(variable, parent_block)
 
                 joint_strings = ", ".join(map(lambda x: x + "_str", variables))
                 print_block = blocks.StringBlock(
@@ -121,15 +124,11 @@ def evaluate_print(args, parent_block):
             # be freed at the end of the function.
             name = arg.id
             str_name = arg.id + "_str"
-            var = values.Variable("char", str_name, pointer_depth=1)
-            str_func = values.Function(
-                "char", "str", [values.PassedArgument("Object", name)])
+            evaluate_variable_str(name, parent_block)
 
-            str_create = blocks.AssignBlock(var, str_func)
             str_print = blocks.StringBlock(
                 'printf("%s\\n", {});'.format(str_name))
 
-            parent_block.append_block(str_create)
             parent_block.append_block(str_print)
 
 
@@ -139,9 +138,18 @@ def evaluate_assignment(targets, value, parent_block):
             for target in targets:
                 name = target.id
                 lh_var = values.Variable("Object", name, pointer_depth=1)
+                arg = values.PassedArgument("Object", value.n, meta_type="int")
+                rh_var = values.Function("Object", "new_Integer", [arg])
+                parent_block.append_block(blocks.AssignBlock(lh_var, rh_var))
+        if isinstance(value, ast.Str):
+            for target in targets:
+                name = target.id
+                lh_var = values.Variable("Object", name, pointer_depth=1)
+                lh_var.meta_type = "string"
                 rh_var = values.Function(
-                    "Object", "new_Integer",
-                    [values.PassedArgument("Object", value.n)])
+                    "Object", "new_String",
+                    [values.PassedArgument(
+                        "Object", "\"" + value.s + "\"")])
                 parent_block.append_block(blocks.AssignBlock(lh_var, rh_var))
 
 

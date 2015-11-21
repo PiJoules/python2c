@@ -16,10 +16,28 @@ class Value(object):
 
 
 class Variable(Value):
-    def __init__(self, data_type, name, pointer_depth=0, array_depth=0):
+    def __init__(self, data_type, name, meta_type=None, pointer_depth=0,
+                 array_depth=0):
         super(Variable, self).__init__(
             data_type, name, pointer_depth=pointer_depth,
             array_depth=array_depth)
+
+        # If the actual data_type is Object,
+        # we may still want to know what this
+        # Object represents. (string, int, etc.)
+        self.meta_type = meta_type
+
+    # def __eq__(self, other):
+    #     return self.name == other.name and self.meta_type == other.meta_type
+
+    def dict(self):
+        return {
+            "data_type": self.data_type,
+            "name": self.name,
+            "meta_type": self.meta_type,
+            "pointer_depth": self.pointer_depth,
+            "array_depth": self.array_depth
+        }
 
     def __str__(self):
         return self.name
@@ -37,10 +55,11 @@ class Literal(Variable):
 
 
 class Argument(Variable):
-    def __init__(self, data_type, name, pointer_depth=0, array_depth=0):
+    def __init__(self, data_type, name, meta_type=None, pointer_depth=0,
+                 array_depth=0):
         super(Argument, self).__init__(
             data_type, name, pointer_depth=pointer_depth,
-            array_depth=array_depth)
+            array_depth=array_depth, meta_type=meta_type)
 
     def __str__(self):
         return "{} {}{}{}".format(
@@ -49,20 +68,22 @@ class Argument(Variable):
 
 
 class PassedArgument(Argument):
-    def __init__(self, data_type, name, pointer_depth=0, array_depth=0):
+    def __init__(self, data_type, name, meta_type=None, pointer_depth=0,
+                 array_depth=0):
         super(Argument, self).__init__(
             data_type, name, pointer_depth=pointer_depth,
-            array_depth=array_depth)
+            array_depth=array_depth, meta_type=meta_type)
 
     def __str__(self):
         return str(self.name)
 
 
 class PassedLiteralArgument(PassedArgument):
-    def __init__(self, data_type, name, pointer_depth=0, array_depth=0):
+    def __init__(self, data_type, name, meta_type=None, pointer_depth=0,
+                 array_depth=0):
         super(Argument, self).__init__(
             data_type, name, pointer_depth=pointer_depth,
-            array_depth=array_depth)
+            array_depth=array_depth, meta_type=meta_type)
 
     def __str__(self):
         if isinstance(self.name, basestring):
