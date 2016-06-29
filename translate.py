@@ -11,6 +11,93 @@ from utils import prettyparseprint
 
 LOGGER = logging.getLogger(__name__)
 
+INT_TYPE = "int"
+FLOAT_TYPE = "float"
+LONG_TYPE = "long"
+
+
+def load_file_module(filename):
+    with open(filename, "r") as py_file:
+        return ast.parse(py_file.read())
+
+
+#def num_type()
+
+
+def translate_assign(node, output):
+    """Handle assign statements.
+    TODO: Handle unpacking and loading from variables.
+    """
+    assert isinstance(node, ast.Assign)
+
+    value = node.value
+    if isinstance(value, ast.Num):
+        # Print type first
+        n = value.n
+        if isinstance(n, int):
+            value_type = "int"
+        elif isinstance(n, float):
+            value_type = "float"
+        elif isinstance(n, long):
+            value_type = "long"
+        else:
+            raise RuntimeError("Unknown Num type '{}'.".format(type(n)))
+        print("{} ".format(value_type), file=output, end="")
+
+        # Print variable names
+        assert all(isinstance(target, ast.Name) and isinstance(target.ctx, ast.Store) for target in node.targets)
+        print(" = ".join(target.id for target in node.targets), file=output, end="")
+
+        # Print RHS
+        print(" = {};".format(n), file=output)
+    else:
+        raise RuntimeError("TODO: Be sure to handle value types of {}.".format(type(value)))
+
+
+def translate_bin_op(node, output):
+    """Handle binary operations."""
+    assert isinstance(node, ast.BinOp)
+
+    op = node.op
+
+    if isinstance(op, ast.Add):
+        prettyparseprint(node)
+        print("({} + {})".format(node.left.id, node.right.id), file=output, end="")
+    else:
+        raise RuntimeError("TODO: be sure to implement the {} operation.".format(op))
+
+
+def translate_print(node, output):
+    """Handle python2 print statement."""
+    assert isinstance(node, ast.Print)
+
+    dest = node.dest
+    values = node.values
+
+    print_str = ""
+    for i, val in enumerate(values):
+        if isinstance(val, ast.BinOp):
+            #print_str
+            print("printf({});", translate_bin_op(val, output), file=output)
+        else:
+            raise RuntimeError("TODO: be sure to implement the {} operation.".format(op))
+
+    if dest is None:
+        # Print to stdout
+        #print(" ".join())
+        pass
+
+
+def translate_body(body_node, output):
+    """Translate the body of a node."""
+    for node in body_node:
+        if isinstance(node, ast.Assign):
+            translate_assign(node, output)
+        elif isinstance(node, ast.Print):
+            translate_print(node, output)
+        else:
+            prettyparseprint(node)
+
 
 def filename_to_file(filename):
     from argparse import ArgumentError
@@ -43,21 +130,11 @@ def get_args():
     return args
 
 
-def load_file_module(filename):
-    with open(filename, "r") as py_file:
-        return ast.parse(py_file.read())
-
-
-def translate_body(body_node, output):
-    for node in body_node:
-        pass
-
-
 def main():
     args = get_args()
 
     module_node = load_file_module(args.filename)
-    prettyparseprint(module_node)
+    translate_body(module_node.body, args.output)
 
     return 0
 
