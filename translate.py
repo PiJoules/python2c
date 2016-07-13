@@ -21,9 +21,6 @@ def load_file_module(filename):
         return ast.parse(py_file.read())
 
 
-#def num_type()
-
-
 def translate_assign(node, output):
     """Handle assign statements.
     TODO: Handle unpacking and loading from variables.
@@ -61,7 +58,6 @@ def translate_bin_op(node, output):
     op = node.op
 
     if isinstance(op, ast.Add):
-        prettyparseprint(node)
         print("({} + {})".format(node.left.id, node.right.id), file=output, end="")
     else:
         raise RuntimeError("TODO: be sure to implement the {} operation.".format(op))
@@ -96,7 +92,7 @@ def translate_body(body_node, output):
         elif isinstance(node, ast.Print):
             translate_print(node, output)
         else:
-            prettyparseprint(node)
+            raise RuntimeError("Unknown node: {}".format(node))
 
 
 def filename_to_file(filename):
@@ -115,6 +111,8 @@ def get_args():
     parser.add_argument("-o", "--output", default=sys.stdout,
                         type=filename_to_file,
                         help="Target output filename. Defaults to stdout.")
+    parser.add_argument("--ast", default=False, action="store_true",
+                        help="Print the ast of the file.")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Logging verbosity.")
 
@@ -134,6 +132,11 @@ def main():
     args = get_args()
 
     module_node = load_file_module(args.filename)
+
+    if args.ast:
+        prettyparseprint(module_node)
+        return 0
+
     translate_body(module_node.body, args.output)
 
     return 0
